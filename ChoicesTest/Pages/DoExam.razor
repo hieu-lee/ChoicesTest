@@ -1,0 +1,80 @@
+﻿@page "/do-exam/{ExamCode}/{ExamName}"
+@using ChoicesTest.Components;
+@using ChoicesTest.Models;
+@using Microsoft.Data.Sqlite;
+@inject IJSRuntime JsRuntime
+@inject NavigationManager navigationManager
+
+<h1>@ExamName</h1>
+<ul>
+    @foreach (QuestionInfo ques in questions)
+    {
+        <li>
+            <Question personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+            </Question>
+        </li>
+    }
+</ul>
+<div class="button-holder">
+    <button class="btn btn-primary" @onclick="ShowScore">Submit</button>
+</div>
+
+@code {
+    [Parameter]
+    public string ExamCode { get; set; }
+
+    [Parameter]
+    public string ExamName { get; set; }
+    public Dictionary<int, char> personalWork = new Dictionary<int, char>();
+    private Dictionary<int, char> solutionKey = new Dictionary<int, char>();
+    private List<QuestionInfo> questions = new List<QuestionInfo>();
+    private SqliteConnection connection;
+
+    protected override async Task<Task> OnInitializedAsync()
+    {
+        await LoadExam();
+        return base.OnInitializedAsync();
+    }
+
+    private async Task LoadExam()
+    {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        connectionStringBuilder.DataSource = "exams.db";
+        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        await task;
+        try
+        {
+            myCmd.CommandText = $"SELECT * FROM {ExamCode}";
+            using var rdr = myCmd.ExecuteReader();
+            while (rdr.Read())
+            {
+                solutionKey.Add(rdr.GetInt32(0), rdr.GetChar(6));
+                questions.Add(new QuestionInfo() { number = rdr.GetInt32(0), question = rdr.GetString(1), answerA = rdr.GetString(2), answerB = rdr.GetString(3), answerC = rdr.GetString(4), answerD = rdr.GetString(5), answer = rdr.GetString(6) });
+            }
+        }
+        catch (Exception) { };
+        connection.Close();
+    }
+
+    private async void ShowScore()
+    {
+        var score = 0;
+        var max = 0;
+        Parallel.ForEach(solutionKey.Keys, qnum =>
+        {
+            try
+            {
+                if (solutionKey[qnum] == personalWork[qnum])
+                {
+                    score++;
+                    max++;
+                }
+            }
+            catch (Exception) { }
+        });
+        await JsRuntime.InvokeAsync<object>("alert", $"Your final score is {score.ToString()}/{max.ToString()}");
+        navigationManager.NavigateTo("/true");
+    }
+}

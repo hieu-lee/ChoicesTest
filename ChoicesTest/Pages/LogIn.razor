@@ -1,0 +1,106 @@
+﻿@page "/log-in"
+@using Microsoft.Data.Sqlite;
+@inject IJSRuntime JsRuntime;
+@inject NavigationManager navigationManager;
+@using System.Configuration; 
+@using System;
+
+<h2>Welcome to Exam Access!</h2>
+@if (!register)
+{
+<form>
+    <input type="text" @bind="username" placeholder="Username" /><br />
+    <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+    <p>Don't have an account yet? <a href="#">Register</a></p>
+    <button class="btn btn-primary" @onclick="SignIn">Log In</button>
+</form>
+}
+else
+{
+<form>
+    <input type="text" @bind="fname" placeholder="First Name" /><br />
+    <input type="text" @bind="lname" placeholder="Last Name" /><br />
+    <input type="text" @bind="username" placeholder="Username" /><br />
+    <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+    <button class="btn btn-primary" @onclick="SignUp">Sign Up</button>
+</form>
+}
+
+
+@code {
+    private bool register = false;
+    SqliteConnection connection;
+    string fname = string.Empty;
+    string lname = string.Empty;
+    string username = string.Empty;
+    string password = string.Empty;
+    Dictionary<string, string> Accounts = new Dictionary<string, string>();
+
+    protected override async Task<Task> OnInitializedAsync()
+    {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        connectionStringBuilder.DataSource = "exams.db";
+        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        myCmd.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT);";
+        await task;
+        myCmd.ExecuteNonQuery();
+        GetAccounts();
+        connection.Close();
+        return base.OnInitializedAsync();
+    }
+
+    private void GetAccounts()
+    {
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT * FROM accounts";
+        using var rdr = cmd.ExecuteReader();
+        while (rdr.Read())
+        {
+            Accounts.Add(rdr.GetString(0), rdr.GetString(1));
+        }
+    }
+
+    private async void SignIn()
+    {
+        username = username.Trim();
+        password = password.Trim();
+        if (Accounts.ContainsKey(username))
+        {
+            if (Accounts[username] == password)
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "Successfully loged in!");
+                return;
+            }
+            else
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "Your password is incorrect!");
+                return;
+            }
+        }
+        else
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "Your username is incorrect!");
+            return;
+        }
+    }
+
+    private async void SignUp()
+    {
+        fname.Trim();
+        fname = fname.First().ToString().ToUpper() + fname.Substring(1);
+        lname.Trim();
+        lname = lname.First().ToString().ToUpper() + lname.Substring(1);
+        username.Trim();
+        password.Trim();
+        var name = $"{lname} {fname}";
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
+        await task;
+        myCmd.ExecuteNonQuery();
+        GetAccounts();
+        connection.Close();
+    }
+}

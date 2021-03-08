@@ -1,0 +1,32 @@
+﻿input {
+    outline: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    margin-top: 5px;
+}
+
+ul {
+    margin: 0;
+    margin-top: 10px;
+}
+
+ul li {
+    display: flex;
+}
+
+ul img {
+    width: 50px;
+    height: 50px;
+    transition: all 0.5s;
+}
+
+    ul img:hover {
+        width: 55px;
+        height: 55px;
+        transition: all 0.5s;
+    }
+
+input:focus {
+    border-bottom-color: dodgerblue;
+}

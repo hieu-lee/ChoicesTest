@@ -1,0 +1,99 @@
+﻿@page "/"
+@page "/removed/{RemovedExam}"
+@page "/{DoExam:bool}"
+@using Microsoft.Data.Sqlite;
+@using System.Data;
+@inject NavigationManager navigationManager
+@inject IJSRuntime JsRuntime
+
+<h1>Exam Access</h1>
+Available exams:
+@if (!DoExam)
+{
+    <ul>
+        @foreach (string name in Exams.Keys)
+        {
+            <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+        }
+    </ul>
+    <h3>Add new exam</h3>
+    <input @bind="NewExamCode" type="text" placeholder="New examcode">
+    <br />
+    <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
+}
+else
+{
+    <ul>
+        @foreach (string name in Exams.Keys)
+        {
+            <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+        }
+    </ul>
+}
+
+
+
+@code {
+    [Parameter]
+    public bool DoExam { get; set; } = false;
+    [Parameter]
+    public string RemovedExam { get; set; } = null;
+
+    private string NewExamCode;
+    private SqliteConnection connection;
+    private Dictionary<string, string> Exams = new Dictionary<string, string>();
+
+    protected override async Task<Task> OnInitializedAsync()
+    {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        connectionStringBuilder.DataSource = "exams.db";
+        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        if (RemovedExam is not null)
+        {
+            myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
+        }
+        else
+        {
+            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT, name TEXT);";
+        }
+        await task;
+        myCmd.ExecuteNonQuery();
+        GetTables();
+        connection.Close();
+        return base.OnInitializedAsync();
+    }
+
+    private void GetTables()
+    {
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT * FROM exam_collection";
+        using var rdr = cmd.ExecuteReader();
+        while (rdr.Read())
+        {
+            Exams.Add(rdr.GetString(0), rdr.GetString(1));
+        }
+    }
+
+    private async void CreateNewExam()
+    {
+        if (string.IsNullOrWhiteSpace(NewExamCode))
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "Please fill in the examcode.");
+        }
+        else
+        {
+            NewExamCode.Trim();
+            if (Exams.ContainsKey(NewExamCode))
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "Examcode has already existed!");
+                NewExamCode = string.Empty;
+            }
+            else
+            {
+                navigationManager.NavigateTo($"/exam-create/{NewExamCode}");
+            }
+        }
+    }
+}

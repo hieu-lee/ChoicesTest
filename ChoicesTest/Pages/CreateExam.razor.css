@@ -1,0 +1,34 @@
+﻿h1 {
+    text-align: center;
+}
+
+textarea {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+    textarea:focus {
+        border-bottom-color: dodgerblue;
+    }
+
+input {
+    margin-left: 5px;
+    outline: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+    input:focus {
+        border-bottom-color: dodgerblue;
+    }
+
+
+ul {
+    padding: 0;
+}
+
+ul li {
+    list-style: none;
+}
