@@ -1,10 +1,10 @@
 ﻿@page "/"
+@page "/home"
 @page "/removed/{RemovedExam}"
 @page "/{DoExam:bool}"
 @using Microsoft.Data.Sqlite;
-@using System.Data;
-@inject NavigationManager navigationManager
-@inject IJSRuntime JsRuntime
+@inject NavigationManager navigationManager;
+@inject IJSRuntime JsRuntime;
 
 <h1>Exam Access</h1>
 Available exams:
@@ -38,12 +38,12 @@ else
     public bool DoExam { get; set; } = false;
     [Parameter]
     public string RemovedExam { get; set; } = null;
-
+    private string user;
     private string NewExamCode;
     private SqliteConnection connection;
     private Dictionary<string, string> Exams = new Dictionary<string, string>();
 
-    protected override async Task<Task> OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         var connectionStringBuilder = new SqliteConnectionStringBuilder();
         connectionStringBuilder.DataSource = "exams.db";
@@ -56,13 +56,12 @@ else
         }
         else
         {
-            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT, name TEXT);";
+            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT PRIMARY KEY, name TEXT);";
         }
         await task;
         myCmd.ExecuteNonQuery();
         GetTables();
         connection.Close();
-        return base.OnInitializedAsync();
     }
 
     private void GetTables()

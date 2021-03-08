@@ -1,34 +1,35 @@
 ﻿@page "/log-in"
+@page "/log-in/{register:bool}"
 @using Microsoft.Data.Sqlite;
 @inject IJSRuntime JsRuntime;
 @inject NavigationManager navigationManager;
-@using System.Configuration; 
-@using System;
 
 <h2>Welcome to Exam Access!</h2>
 @if (!register)
 {
-<form>
-    <input type="text" @bind="username" placeholder="Username" /><br />
-    <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-    <p>Don't have an account yet? <a href="#">Register</a></p>
-    <button class="btn btn-primary" @onclick="SignIn">Log In</button>
-</form>
+    <form>
+        <input type="text" @bind="username" placeholder="Username" /><br />
+        <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+        <p>Don't have an account yet? <a href="log-in/true">Register</a></p>
+        <button class="btn btn-primary" @onclick="SignIn">Log In</button>
+    </form>
 }
 else
 {
-<form>
-    <input type="text" @bind="fname" placeholder="First Name" /><br />
-    <input type="text" @bind="lname" placeholder="Last Name" /><br />
-    <input type="text" @bind="username" placeholder="Username" /><br />
-    <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-    <button class="btn btn-primary" @onclick="SignUp">Sign Up</button>
-</form>
+    <form>
+        <input type="text" @bind="fname" placeholder="First Name" /><br />
+        <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
+        <input style="margin-top: 10px;" type="text" @bind="username" placeholder="Username" /><br />
+        <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+        <button class="btn btn-primary" @onclick="SignUp">Sign Up</button>
+    </form>
 }
 
 
 @code {
-    private bool register = false;
+    [Parameter]
+    public bool register { get; set; } = false;
+
     SqliteConnection connection;
     string fname = string.Empty;
     string lname = string.Empty;
@@ -70,7 +71,8 @@ else
         {
             if (Accounts[username] == password)
             {
-                await JsRuntime.InvokeAsync<object>("alert", "Successfully loged in!");
+                await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
+                navigationManager.NavigateTo("/home");
                 return;
             }
             else
@@ -94,13 +96,18 @@ else
         lname = lname.First().ToString().ToUpper() + lname.Substring(1);
         username.Trim();
         password.Trim();
-        var name = $"{lname} {fname}";
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
-        await task;
-        myCmd.ExecuteNonQuery();
-        GetAccounts();
-        connection.Close();
+        if (!Accounts.ContainsKey(username))
+        {
+            var name = $"{lname} {fname}";
+            var task = connection.OpenAsync();
+            var myCmd = connection.CreateCommand();
+            myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
+            await task;
+            myCmd.ExecuteNonQuery();
+            GetAccounts();
+            connection.Close();
+            await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with the new account!");
+            navigationManager.NavigateTo("/home");
+        }
     }
 }
