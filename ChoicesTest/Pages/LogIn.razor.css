@@ -1,6 +1,14 @@
 ﻿input {
     height: 40px;
+    outline: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
 }
+
+    input:focus {
+        border-bottom-color: dodgerblue;
+    }
 
 p {
     margin-top: 15px;

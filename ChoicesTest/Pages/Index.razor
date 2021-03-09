@@ -9,57 +9,65 @@
 @inject ProtectedSessionStorage sessionStorage;
 
 <h1>Welcome @user to Exam Access</h1>
-@if (!string.IsNullOrWhiteSpace(user))
+@if (loading)
 {
-    <h5>Available exams:</h5>
-    @if (!DoExam)
-    { 
-        if (Exams.Count == 0)
-        {
-            <ul>
-                <li>There is no exam avaible yet.</li>
-            </ul>
-        }
-        else
-        {
-            <ul>
-                @foreach (string name in Exams.Keys)
-                {
-                    <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
-                }
-            </ul>
-        }
-        <hr />
-        <h3>Add new exam</h3>
-        <input @bind="NewExamCode" type="text" placeholder="New examcode">
-        <br />
-        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
-    }
-    else
-    {
-        if (Exams.Count == 0)
-        {
-            <ul>
-                <li>There is no exam avaible yet.</li>
-            </ul>
-        }
-        else
-        {
-            <ul>
-                @foreach (string name in Exams.Keys)
-                {
-                    <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
-                }
-            </ul>
-        }
-    }
+    <p>Loading...</p>
+    LoadData();
 }
 else
 {
-    <h3>Log in to start using Exam Access</h3>
+    if (!string.IsNullOrWhiteSpace(user))
+    {
+        <h5>Available exams:</h5>
+        if (!DoExam)
+        {
+            if (Exams.Count == 0)
+            {
+                <ul>
+                    <li>There is no exam avaible yet.</li>
+                </ul>
+            }
+            else
+            {
+                <ul style="max-height:450px;overflow-y:scroll">
+                    <Virtualize Items="@Exams.Keys" Context="name">
+                        <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                    </Virtualize>
+                </ul>
+            }
+            <hr />
+            <h3>Add new exam</h3>
+            <input @bind="NewExamCode" type="text" placeholder="New examcode">
+            <br />
+            <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
+        }
+        else
+        {
+            if (Exams.Count == 0)
+            {
+                <ul>
+                    <li>There is no exam avaible yet.</li>
+                </ul>
+            }
+            else
+            {
+                <ul style="max-height:450px;overflow-y:scroll">
+                    <Virtualize Items="@Exams.Keys" Context="name">
+                        <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                    </Virtualize>
+                    @*@foreach (string name in Exams.Keys)
+                    {
+                        <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                    }*@
+                </ul>
+            }
+        }
+    }
+    else
+    {
+        <h3>Log in to start using Exam Access</h3>
+    }
 }
-
-
 
 
 
@@ -71,8 +79,10 @@ else
     private string user = string.Empty;
     private string NewExamCode;
     private SqliteConnection connection;
+    private bool loading = true;
     private Dictionary<string, string> Exams = new();
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+
+    private async void LoadData()
     {
         try
         {
@@ -88,6 +98,8 @@ else
             user = string.Empty;
             await sessionStorage.DeleteAsync("user");
         }
+        loading = false;
+        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()

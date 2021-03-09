@@ -6,43 +6,84 @@
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @inject ProtectedSessionStorage sessionStorage;
 
-<h2>Welcome to Exam Access!</h2>
-
-@if (!register)
+<h1>Welcome to Exam Access!</h1>
+@if (loading)
 {
-    <div>
-        <input type="text" @bind="username" placeholder="Username" /><br />
-        <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-        <p>Don't have an account yet? <a @onclick="() => { username = string.Empty; password = string.Empty; }" href="log-in/true">Register</a></p>
-        <button class="btn btn-primary" @onclick="SignIn">Log In</button>
-    </div>
+    <p>Loading...</p>
+    LoadData();
 }
 else
 {
-    <div>
-        <input type="text" @bind="fname" placeholder="First Name" /><br />
-        <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
-        <input style="margin-top: 10px;" type="text" @bind="username" placeholder="Username" /><br />
-        <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignUp">Sign Up</button>
-    </div>
+    if (!logged)
+    {
+        if (!register)
+        {
+            <div>
+                <input type="text" @bind="username" placeholder="Username" /><br />
+                <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+                <p>Don't have an account yet? <a @onclick="() => { username = string.Empty; password = string.Empty; }" href="log-in/true">Register</a></p>
+                <button class="btn btn-primary" @onclick="SignIn">Log In</button>
+            </div>
+        }
+        else
+        {
+            <div>
+                <input type="text" @bind="fname" placeholder="First Name" /><br />
+                <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
+                <input style="margin-top: 10px;" type="text" @bind="username" placeholder="Username" /><br />
+                <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+                <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignUp">Sign Up</button>
+            </div>
+        }
+    }
+    else
+    {
+        <h5>You have already logged in</h5>
+        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignOut">Log out</button>
+    }
 }
+
 
 @code {
     [Parameter]
     public bool register { get; set; } = false;
-    SqliteConnection connection;
-    string fname = string.Empty;
-    string lname = string.Empty;
-    string username = string.Empty;
+    private bool loading = true;
+    private bool logged;
+    private SqliteConnection connection;
+    private string fname = string.Empty;
+    private string lname = string.Empty;
+    private string username = string.Empty;
     string password = string.Empty;
-    Dictionary<string, string> Accounts = new Dictionary<string, string>();
+    private Dictionary<string, Tuple<string, string>> Accounts = new();
+
+    private async void LoadData()
+    {
+        try
+        {
+            var result = await sessionStorage.GetAsync<string>("user");
+            if (result.Success)
+            {
+                logged = true;
+            }
+            else
+            {
+                logged = false;
+            }
+        }
+        catch (Exception)
+        {
+            await sessionStorage.DeleteAsync("user");
+            navigationManager.NavigateTo("/home", true);
+        }
+        loading = false;
+        StateHasChanged();
+    }
 
     protected override Task OnInitializedAsync()
     {
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        SqliteConnectionStringBuilder connectionStringBuilder = new();
         connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        connection = new(connectionStringBuilder.ConnectionString);
         connection.Open();
         GetAccounts();
         connection.Close();
@@ -56,7 +97,7 @@ else
         using var rdr = cmd.ExecuteReader();
         while (rdr.Read())
         {
-            Accounts.Add(rdr.GetString(0), rdr.GetString(1));
+            Accounts.Add(rdr.GetString(0), new Tuple<string, string>(rdr.GetString(1), rdr.GetString(2)));
         }
     }
 
@@ -66,11 +107,11 @@ else
         password = password.Trim();
         if (Accounts.ContainsKey(username))
         {
-            if (Accounts[username] == password)
+            if (Accounts[username].Item1 == password)
             {
-                await sessionStorage.SetAsync("user", username);
+                await sessionStorage.SetAsync("user", Accounts[username].Item2);
                 await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
-                navigationManager.NavigateTo("/home", true);
+                navigationManager.NavigateTo("/home");
                 return;
             }
             else
@@ -94,9 +135,19 @@ else
         lname = lname.First().ToString().ToUpper() + lname.Substring(1);
         username.Trim();
         password.Trim();
+        if (string.IsNullOrWhiteSpace(fname) || string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "Please fill in all the information!");
+            return;
+        }
+        if (password.Length < 6 || password.Contains(' '))
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "The password must have at least 6 characters and not contain any whitespace");
+            return;
+        }
         if (!Accounts.ContainsKey(username))
         {
-            var name = $"{lname} {fname}";
+            var name = $"{fname} {lname}";
             var task = connection.OpenAsync();
             var myCmd = connection.CreateCommand();
             myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
@@ -104,9 +155,22 @@ else
             myCmd.ExecuteNonQuery();
             GetAccounts();
             connection.Close();
-            await sessionStorage.SetAsync("user", username);
+            await sessionStorage.SetAsync("user", name);
             await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
-            navigationManager.NavigateTo("/home", true);
+            navigationManager.NavigateTo("/home");
         }
+        else
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "Your username has already been taken");
+            return;
+        }
+    }
+
+    private async void SignOut()
+    {
+        await sessionStorage.DeleteAsync("user");
+        await JsRuntime.InvokeAsync<object>("alert", "Successfully logged out!");
+        loading = true;
+        StateHasChanged();
     }
 }

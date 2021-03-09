@@ -184,6 +184,11 @@
 
     private async void CreateNewQuestion()
     {
+        if (CurrentQuestionNumber == 100)
+        {
+            await JsRuntime.InvokeAsync<object>("alert", "You have reached the maximum number of questions for this exam!");
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(NewTitle) && !string.IsNullOrWhiteSpace(NewAnswerA) && !string.IsNullOrWhiteSpace(NewAnswerB) && !string.IsNullOrWhiteSpace(NewAnswerC) && !string.IsNullOrWhiteSpace(NewAnswerD))
         {
             if (ChoiceA || ChoiceB || ChoiceC || ChoiceD)
@@ -204,6 +209,10 @@
                     return;
                 }
                 SetAnswer();
+                if (NewTitle.Last() != '?')
+                {
+                    NewTitle += "?";
+                }
                 NewTitle = NewTitle.First().ToString().ToUpper() + NewTitle.Substring(1);
                 var NewQuestion = new QuestionInfo() { question = NewTitle, number = CurrentQuestionNumber, answerA = NewAnswerA, answerB = NewAnswerB, answerC = NewAnswerC, answerD = NewAnswerD, answer = Answer };
                 var task1 = InsertQuestionAsync(NewQuestion);
@@ -214,7 +223,6 @@
                 NewAnswerC = string.Empty;
                 NewAnswerD = string.Empty;
                 CurrentQuestionNumber++;
-                //StateHasChanged();
                 await task1;
             }
             else
