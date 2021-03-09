@@ -3,33 +3,36 @@
 @using Microsoft.Data.Sqlite;
 @inject IJSRuntime JsRuntime;
 @inject NavigationManager navigationManager;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject ProtectedSessionStorage sessionStorage;
 
 <h2>Welcome to Exam Access!</h2>
+
 @if (!register)
 {
-    <form>
+    <div>
         <input type="text" @bind="username" placeholder="Username" /><br />
         <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
         <p>Don't have an account yet? <a href="log-in/true">Register</a></p>
         <button class="btn btn-primary" @onclick="SignIn">Log In</button>
-    </form>
+    </div>
 }
 else
 {
-    <form>
+    username = string.Empty;
+    password = string.Empty;
+    <div>
         <input type="text" @bind="fname" placeholder="First Name" /><br />
         <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
         <input style="margin-top: 10px;" type="text" @bind="username" placeholder="Username" /><br />
         <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-        <button class="btn btn-primary" @onclick="SignUp">Sign Up</button>
-    </form>
+        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignUp">Sign Up</button>
+    </div>
 }
-
 
 @code {
     [Parameter]
     public bool register { get; set; } = false;
-
     SqliteConnection connection;
     string fname = string.Empty;
     string lname = string.Empty;
@@ -37,16 +40,12 @@ else
     string password = string.Empty;
     Dictionary<string, string> Accounts = new Dictionary<string, string>();
 
-    protected override async Task<Task> OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         var connectionStringBuilder = new SqliteConnectionStringBuilder();
         connectionStringBuilder.DataSource = "exams.db";
         connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        myCmd.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT);";
-        await task;
-        myCmd.ExecuteNonQuery();
+        connection.Open();
         GetAccounts();
         connection.Close();
         return base.OnInitializedAsync();
@@ -71,8 +70,9 @@ else
         {
             if (Accounts[username] == password)
             {
+                await sessionStorage.SetAsync("user", username);
                 await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
-                navigationManager.NavigateTo("/home");
+                navigationManager.NavigateTo("/home", true);
                 return;
             }
             else
@@ -106,8 +106,9 @@ else
             myCmd.ExecuteNonQuery();
             GetAccounts();
             connection.Close();
-            await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with the new account!");
-            navigationManager.NavigateTo("/home");
+            await sessionStorage.SetAsync("user", username);
+            await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
+            navigationManager.NavigateTo("/home", true);
         }
     }
 }

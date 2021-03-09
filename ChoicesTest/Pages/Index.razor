@@ -5,8 +5,10 @@
 @using Microsoft.Data.Sqlite;
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject ProtectedSessionStorage sessionStorage;
 
-<h1>Exam Access</h1>
+<h1>Welcome @user to Exam Access</h1>
 Available exams:
 @if (!DoExam)
 {
@@ -38,10 +40,33 @@ else
     public bool DoExam { get; set; } = false;
     [Parameter]
     public string RemovedExam { get; set; } = null;
-    private string user;
+    private string user = string.Empty;
     private string NewExamCode;
     private SqliteConnection connection;
     private Dictionary<string, string> Exams = new Dictionary<string, string>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            var result = await sessionStorage.GetAsync<string>("user");
+            if (result.Success)
+            {
+                user = result.Value;
+                StateHasChanged();
+            }
+            else
+            {
+                navigationManager.NavigateTo("/log-in", true);
+            }
+        }
+        catch(Exception)
+        {
+            user = string.Empty;
+            await sessionStorage.DeleteAsync("user");
+            navigationManager.NavigateTo("/log-in", true);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -50,6 +75,8 @@ else
         connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
         var task = connection.OpenAsync();
         var myCmd = connection.CreateCommand();
+        var myCmd2 = connection.CreateCommand();
+        myCmd2.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT);";
         if (RemovedExam is not null)
         {
             myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
@@ -60,6 +87,7 @@ else
         }
         await task;
         myCmd.ExecuteNonQuery();
+        myCmd2.ExecuteNonQuery();
         GetTables();
         connection.Close();
     }
