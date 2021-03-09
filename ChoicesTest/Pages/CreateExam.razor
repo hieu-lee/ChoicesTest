@@ -27,7 +27,8 @@
             </li>
         }
     </ul>
-    <form>
+    <hr />
+    <div>
         <textarea @bind="NewTitle" placeholder="Question @CurrentQuestionNumber.ToString()" style="width: 462px; outline: none; height: 30px;"></textarea>
         <div class="new-answers" style="display: flex; margin-top: 10px;">
             <div class="collumn-left">
@@ -39,7 +40,7 @@
                 <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceD = true; ChoiceB = false; ChoiceC = false; ChoiceA = false; }" /><input placeholder="Answer D" @bind="NewAnswerD" /></div>
             </div>
         </div>
-    </form>
+    </div>
     <br />
     <button class="btn btn-primary" @onclick="CreateNewQuestion">Add Question</button>
     <button class="btn btn-primary" style="background-color: red; border: 1px solid red;" @onclick="DeleteExam">Delete</button>

@@ -13,10 +13,12 @@
 {
     <h5>Available exams:</h5>
     @if (!DoExam)
-    {
+    { 
         if (Exams.Count == 0)
         {
-            <p>There is no exam yet</p>
+            <ul>
+                <li>There is no exam avaible yet.</li>
+            </ul>
         }
         else
         {
@@ -27,6 +29,7 @@
                 }
             </ul>
         }
+        <hr />
         <h3>Add new exam</h3>
         <input @bind="NewExamCode" type="text" placeholder="New examcode">
         <br />
@@ -36,7 +39,9 @@
     {
         if (Exams.Count == 0)
         {
-            <p>There is no exam yet</p>
+            <ul>
+                <li>There is no exam avaible yet.</li>
+            </ul>
         }
         else
         {
