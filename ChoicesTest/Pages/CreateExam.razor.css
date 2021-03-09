@@ -13,14 +13,21 @@ textarea {
     }
 
 input {
-    margin-left: 5px;
+    position: absolute;
+    margin-top: 5px;
+}
+
+.answer-box {
+    height: 30px;
+    margin-left: 25px;
     outline: none;
     border-top: none;
     border-left: none;
     border-right: none;
+    width: 438px;
 }
 
-    input:focus {
+    .answer-box:focus {
         border-bottom-color: dodgerblue;
     }
 

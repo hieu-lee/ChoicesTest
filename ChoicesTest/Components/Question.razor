@@ -5,15 +5,11 @@
         <p>Câu hỏi @number.ToString(): @question</p>
     </div>
     
-    <div style="display: flex; margin-top: 5px;">
-        <div>
-            <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'A'; }" type="radio" value="A" /> @answerA</div>
-            <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'B'; }" type="radio" value="B" /> @answerB</div>
-        </div>
-        <div class="collumn-right" style="margin-left: 20px;">
-            <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'C'; }" type="radio" value="C" /> @answerC</div>
-            <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'D'; }" type="radio" value="D" /> @answerD</div>
-        </div>
+    <div>
+        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'A'; }" type="radio" value="A" /> @answerA</div>
+        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'B'; }" type="radio" value="B" /> @answerB</div>
+        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'C'; }" type="radio" value="C" /> @answerC</div>
+        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'D'; }" type="radio" value="D" /> @answerD</div>
     </div>
 </div>
 

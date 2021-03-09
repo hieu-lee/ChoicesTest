@@ -30,15 +30,11 @@
     <hr />
     <div>
         <textarea @bind="NewTitle" placeholder="Question @CurrentQuestionNumber.ToString()" style="width: 462px; outline: none; height: 30px;"></textarea>
-        <div class="new-answers" style="display: flex; margin-top: 10px;">
-            <div class="collumn-left">
-                <div><input name="choice" type="radio" @onclick="() => { ChoiceA = true; ChoiceB = false; ChoiceC = false; ChoiceD = false; }" /><input placeholder="Answer A" @bind="NewAnswerA" /></div>
-                <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceB = true; ChoiceA = false; ChoiceC = false; ChoiceD = false; }" /><input placeholder="Answer B" @bind="NewAnswerB" /></div>
-            </div>
-            <div class="collumn-right" style="margin-left: 20px;">
-                <div><input name="choice" type="radio" @onclick="() => { ChoiceC = true; ChoiceB = false; ChoiceA = false; ChoiceD = false; }" /><input placeholder="Answer C" @bind="NewAnswerC" /></div>
-                <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceD = true; ChoiceB = false; ChoiceC = false; ChoiceA = false; }" /><input placeholder="Answer D" @bind="NewAnswerD" /></div>
-            </div>
+        <div class="new-answers" style="margin-top: 10px;">
+            <div><input name="choice" type="radio" @onclick="() => { ChoiceA = true; ChoiceB = false; ChoiceC = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer A" @bind="NewAnswerA" /></div>
+            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceB = true; ChoiceA = false; ChoiceC = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer B" @bind="NewAnswerB" /></div>
+            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceC = true; ChoiceB = false; ChoiceA = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer C" @bind="NewAnswerC" /></div>
+            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceD = true; ChoiceB = false; ChoiceC = false; ChoiceA = false; }" /><textarea class="answer-box" placeholder="Answer D" @bind="NewAnswerD" /></div>
         </div>
     </div>
     <br />
@@ -191,6 +187,11 @@
         }
         if (!string.IsNullOrWhiteSpace(NewTitle) && !string.IsNullOrWhiteSpace(NewAnswerA) && !string.IsNullOrWhiteSpace(NewAnswerB) && !string.IsNullOrWhiteSpace(NewAnswerC) && !string.IsNullOrWhiteSpace(NewAnswerD))
         {
+            if (NewTitle.Contains('\'') || NewAnswerA.Contains('\'') || NewAnswerB.Contains('\'') || NewAnswerC.Contains('\'') || NewAnswerD.Contains('\''))
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "The question must not contain special characters");
+                return;
+            }
             if (ChoiceA || ChoiceB || ChoiceC || ChoiceD)
             {
                 var Answers = new HashSet<string>();

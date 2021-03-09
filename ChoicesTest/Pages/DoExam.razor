@@ -65,12 +65,12 @@
         var max = 0;
         Parallel.ForEach(solutionKey.Keys, qnum =>
         {
+            max++;
             try
             {
                 if (solutionKey[qnum] == personalWork[qnum])
                 {
                     score++;
-                    max++;
                 }
             }
             catch (Exception) { }
