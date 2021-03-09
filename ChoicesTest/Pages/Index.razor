@@ -21,25 +21,36 @@ else
         <h5>Available exams:</h5>
         if (!DoExam)
         {
-            if (Exams.Count == 0)
+            if (user == "admin")
             {
-                <ul>
-                    <li>There is no exam avaible yet.</li>
-                </ul>
+                if (Exams.Count == 0)
+                {
+                    <ul>
+                        <li>There is no exam avaible yet.</li>
+                    </ul>
+                }
+                else
+                {
+                    <ul style="max-height:450px;overflow-y:scroll">
+                        <Virtualize Items="@Exams.Keys" Context="name">
+                            <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                        </Virtualize>
+                    </ul>
+                }
+                <hr />
+                <h3>Add new exam</h3>
+                <input @bind="NewExamCode" type="text" placeholder="New examcode">
+                <br />
+                <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
             }
             else
             {
-                <ul style="max-height:450px;overflow-y:scroll">
-                    <Virtualize Items="@Exams.Keys" Context="name">
-                        <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
-                    </Virtualize>
-                </ul>
+                <p>
+                    This is a product of Hieu Le. This app will allow you to create and do exams.<br />
+                    However, in order to be able to create exams, you have to log in as admin.<br />
+                    If you are not the admin, you are only able to do exams.
+                </p>
             }
-            <hr />
-            <h3>Add new exam</h3>
-            <input @bind="NewExamCode" type="text" placeholder="New examcode">
-            <br />
-            <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
         }
         else
         {

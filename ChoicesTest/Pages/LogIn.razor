@@ -151,6 +151,10 @@ else
         if (!Accounts.ContainsKey(username))
         {
             var name = $"{fname} {lname}";
+            if (username == "admin")
+            {
+                name = "admin";
+            }
             var task = connection.OpenAsync();
             var myCmd = connection.CreateCommand();
             myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
