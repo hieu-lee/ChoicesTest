@@ -9,29 +9,52 @@
 @inject ProtectedSessionStorage sessionStorage;
 
 <h1>Welcome @user to Exam Access</h1>
-Available exams:
-@if (!DoExam)
+@if (!string.IsNullOrWhiteSpace(user))
 {
-    <ul>
-        @foreach (string name in Exams.Keys)
+    <h5>Available exams:</h5>
+    @if (!DoExam)
+    {
+        if (Exams.Count == 0)
         {
-            <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+            <p>There is no exam yet</p>
         }
-    </ul>
-    <h3>Add new exam</h3>
-    <input @bind="NewExamCode" type="text" placeholder="New examcode">
-    <br />
-    <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
+        else
+        {
+            <ul>
+                @foreach (string name in Exams.Keys)
+                {
+                    <li><a href="/exam-create/@name/true/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                }
+            </ul>
+        }
+        <h3>Add new exam</h3>
+        <input @bind="NewExamCode" type="text" placeholder="New examcode">
+        <br />
+        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
+    }
+    else
+    {
+        if (Exams.Count == 0)
+        {
+            <p>There is no exam yet</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (string name in Exams.Keys)
+                {
+                    <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
+                }
+            </ul>
+        }
+    }
 }
 else
 {
-    <ul>
-        @foreach (string name in Exams.Keys)
-        {
-            <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
-        }
-    </ul>
+    <h3>Log in to start using Exam Access</h3>
 }
+
+
 
 
 
@@ -43,8 +66,7 @@ else
     private string user = string.Empty;
     private string NewExamCode;
     private SqliteConnection connection;
-    private Dictionary<string, string> Exams = new Dictionary<string, string>();
-
+    private Dictionary<string, string> Exams = new();
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         try
@@ -55,16 +77,11 @@ else
                 user = result.Value;
                 StateHasChanged();
             }
-            else
-            {
-                navigationManager.NavigateTo("/log-in", true);
-            }
         }
-        catch(Exception)
+        catch (Exception)
         {
             user = string.Empty;
             await sessionStorage.DeleteAsync("user");
-            navigationManager.NavigateTo("/log-in", true);
         }
     }
 

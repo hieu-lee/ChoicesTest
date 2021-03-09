@@ -13,14 +13,12 @@
     <div>
         <input type="text" @bind="username" placeholder="Username" /><br />
         <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-        <p>Don't have an account yet? <a href="log-in/true">Register</a></p>
+        <p>Don't have an account yet? <a @onclick="() => { username = string.Empty; password = string.Empty; }" href="log-in/true">Register</a></p>
         <button class="btn btn-primary" @onclick="SignIn">Log In</button>
     </div>
 }
 else
 {
-    username = string.Empty;
-    password = string.Empty;
     <div>
         <input type="text" @bind="fname" placeholder="First Name" /><br />
         <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
