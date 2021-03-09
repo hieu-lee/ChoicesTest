@@ -55,10 +55,6 @@ else
                     <Virtualize Items="@Exams.Keys" Context="name">
                         <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
                     </Virtualize>
-                    @*@foreach (string name in Exams.Keys)
-                    {
-                        <li><a href="/do-exam/@name/@Exams[name]"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name]</p></li>
-                    }*@
                 </ul>
             }
         }

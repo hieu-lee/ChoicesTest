@@ -97,7 +97,10 @@ else
         using var rdr = cmd.ExecuteReader();
         while (rdr.Read())
         {
-            Accounts.Add(rdr.GetString(0), new Tuple<string, string>(rdr.GetString(1), rdr.GetString(2)));
+            if (!Accounts.ContainsKey(rdr.GetString(0)))
+            {
+                Accounts.Add(rdr.GetString(0), new Tuple<string, string>(rdr.GetString(1), rdr.GetString(2)));
+            }
         }
     }
 
