@@ -14,5 +14,7 @@ namespace ChoicesTest.Models
         public string answerC { get; set; }
         public string answerD { get; set; }
         public string answer { get; set; }
+        public string color { get; set; } = "none";
+        public string answerDisplay { get; set; } = "none";
     }
 }

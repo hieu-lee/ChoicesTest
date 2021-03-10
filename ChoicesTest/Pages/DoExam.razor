@@ -1,25 +1,29 @@
-﻿@page "/do-exam/{ExamCode}/{ExamName}"
+﻿@page "/do-exam/{ExamCode}/{ExamName}/{minutes:int}"
+@page "/do-exam/{ExamCode}/{ExamName}"
 @using ChoicesTest.Components;
 @using ChoicesTest.Models;
 @using Microsoft.Data.Sqlite;
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@using System.Timers;
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
 @inject ProtectedSessionStorage sessionStorage
 
 <h1>@ExamName</h1>
+<h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
 <ul>
     @foreach (QuestionInfo ques in questions)
     {
-        <li>
+        <li style="background-color:@ques.color;">
             <Question personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
             </Question>
+            <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
+            <hr />
         </li>
     }
 </ul>
-<hr />
 <div class="button-holder">
-    <button class="btn btn-primary" @onclick="ShowScore">Submit</button>
+    <button class="btn btn-primary" style="margin-bottom: 10px;" @onclick="ShowScore">Submit</button>
 </div>
 
 @code {
@@ -27,16 +31,52 @@
     public string ExamCode { get; set; }
     [Parameter]
     public string ExamName { get; set; }
+    [Parameter]
+    public int minutes { get; set; } = 0;
+
+    private int TimeLeft;
+    private static Timer timer;
+    private string TimeDisplay = "none";
     private string user;
+    private List<string> colors = new();
     public Dictionary<int, char> personalWork = new Dictionary<int, char>();
     private Dictionary<int, char> solutionKey = new Dictionary<int, char>();
     private List<QuestionInfo> questions = new List<QuestionInfo>();
     private SqliteConnection connection;
+    private bool submitted = false;
 
-    protected override async Task<Task> OnInitializedAsync()
+    private async void CountDown(Object source, System.Timers.ElapsedEventArgs e)
     {
+        if (TimeLeft > 1)
+        {
+            TimeLeft -= 1;
+        }
+        else
+        {
+            timer.Enabled = false;
+            await InvokeAsync(ShowScore);
+        }
+    }
+
+    private void StartTimer()
+    {
+        if (!submitted)
+        {
+            TimeLeft = minutes;
+            timer = new(60000);
+            timer.Elapsed += CountDown;
+            timer.Enabled = true;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        submitted = false;
         await LoadExam();
-        return base.OnInitializedAsync();
+        if (minutes > 0)
+        {
+            StartTimer();
+        }
     }
 
     private async Task LoadUser()
@@ -68,10 +108,21 @@
         }
         catch (Exception) { };
         connection.Close();
+        if (minutes > 0)
+        {
+            TimeDisplay = "block";
+            StateHasChanged();
+        }
     }
 
     private async void ShowScore()
     {
+        if (submitted)
+        {
+            return;
+        }
+        timer.Enabled = false;
+        submitted = true;
         var task = LoadUser();
         var score = 0;
         var max = 0;
@@ -82,10 +133,20 @@
             {
                 if (solutionKey[qnum] == personalWork[qnum])
                 {
+                    questions[qnum - 1].color = "#95FF80";
                     score++;
                 }
+                else
+                {
+                    questions[qnum - 1].color = "#FF4D6A";
+                    questions[qnum - 1].answerDisplay = "block";
+                }
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+                questions[qnum - 1].color = "#FF4D6A";
+                questions[qnum - 1].answerDisplay = "block";
+            }
         });
         var percent = Convert.ToDouble(score) / Convert.ToDouble(max);
         percent *= 100.0;
@@ -101,7 +162,7 @@
             myCmd.ExecuteNonQuery();
             connection.Close();
         }
+        StateHasChanged();
         await task2;
-        navigationManager.NavigateTo("/true");
     }
 }

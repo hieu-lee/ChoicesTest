@@ -1,5 +1,5 @@
 ﻿@page "/exam-create/{ExamName}"
-@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}"
+@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}/{minutes:int}"
 @using ChoicesTest.Models;
 @using ChoicesTest.Components;
 @using Microsoft.Data.Sqlite;
@@ -18,6 +18,7 @@
 @if (TitleSeted)
 {
     <h1>@Title</h1>
+    <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
     <ul>
         @foreach (QuestionInfo ques in questions)
         {
@@ -39,7 +40,11 @@
     </div>
     <br />
     <button class="btn btn-primary" @onclick="CreateNewQuestion">Add Question</button>
-    <button class="btn btn-danger" @onclick="DeleteExam">Delete</button>
+    <button class="btn btn-danger" style="margin-left: 10px;" @onclick="DeleteExam">Delete</button>
+    <div style="margin-top: 15px;">
+        <input class="title-box" style="width: 123px;" type="number" @bind="minutes" min="5" max="300" placeholder="Minutes"/><br />
+        <button class="btn btn-primary" style="margin-top: 20px; margin-bottom: 10px;" @onclick="SetTime">Set time limit</button>
+    </div>
 }
 
 
@@ -53,6 +58,11 @@
     [Parameter]
     public string Title { get; set; } = string.Empty;
 
+    [Parameter]
+    public int minutes { get; set; } = 0;
+
+    private int prevTimeLimit = 0;
+    private string TimeDisplay = "none";
     private SqliteConnection connection;
     private bool ChoiceA = false;
     private bool ChoiceB = false;
@@ -67,20 +77,20 @@
     private List<QuestionInfo> questions = new List<QuestionInfo>();
     private int CurrentQuestionNumber = 1;
 
-    protected override async Task<Task> OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (TitleSeted)
         {
             await CreateNewDb();
         }
-        return base.OnInitializedAsync();
+        SetTime();
     }
 
     private async Task InsertNewExamAsync()
     {
         var task = connection.OpenAsync();
         var cmd = connection.CreateCommand();
-        cmd.CommandText = $"INSERT INTO exam_collection(code, name) VALUES('{ExamName}', '{Title}');";
+        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time) VALUES('{ExamName}', '{Title}', 0);";
         await task;
         cmd.ExecuteNonQuery();
         connection.Close();
@@ -176,6 +186,26 @@
         tablecmd.ExecuteNonQuery();
         await JsRuntime.InvokeAsync<object>("alert", "Successfully deleted the exam.");
         navigationManager.NavigateTo($"/removed/{ExamName}");
+    }
+
+    private async void SetTime()
+    {
+        if (minutes > 0 && minutes != prevTimeLimit)
+        {
+            var task = connection.OpenAsync();
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = $"UPDATE exam_collection SET time = {minutes} WHERE code = '{ExamName}';";
+            await task;
+            cmd.ExecuteNonQuery();
+            connection.Close();
+            TimeDisplay = "block";
+            prevTimeLimit = minutes;
+        }
+        else if (minutes == 0)
+        {
+            TimeDisplay = "none";
+            prevTimeLimit = 0;
+        }
     }
 
     private async void CreateNewQuestion()

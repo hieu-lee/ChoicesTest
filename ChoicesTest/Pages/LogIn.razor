@@ -133,12 +133,11 @@ else
 
     private async void SignUp()
     {
-        fname.Trim();
+        fname = fname.Trim();
         fname = fname.First().ToString().ToUpper() + fname.Substring(1);
-        lname.Trim();
+        lname = lname.Trim();
         lname = lname.First().ToString().ToUpper() + lname.Substring(1);
-        username.Trim();
-        password.Trim();
+        username = username.Trim();
         if (string.IsNullOrWhiteSpace(fname) || string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             await JsRuntime.InvokeAsync<object>("alert", "Please fill in all the information!");
@@ -159,7 +158,7 @@ else
             var task = connection.OpenAsync();
             var myCmd = connection.CreateCommand();
             myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
-            if (username == "admin")
+            if (username != "admin")
             {
                 var myCmd2 = connection.CreateCommand();
                 myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
