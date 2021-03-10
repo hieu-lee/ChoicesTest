@@ -2,8 +2,10 @@
 @using ChoicesTest.Components;
 @using ChoicesTest.Models;
 @using Microsoft.Data.Sqlite;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
+@inject ProtectedSessionStorage sessionStorage
 
 <h1>@ExamName</h1>
 <ul>
@@ -23,9 +25,9 @@
 @code {
     [Parameter]
     public string ExamCode { get; set; }
-
     [Parameter]
     public string ExamName { get; set; }
+    private string user;
     public Dictionary<int, char> personalWork = new Dictionary<int, char>();
     private Dictionary<int, char> solutionKey = new Dictionary<int, char>();
     private List<QuestionInfo> questions = new List<QuestionInfo>();
@@ -35,6 +37,15 @@
     {
         await LoadExam();
         return base.OnInitializedAsync();
+    }
+
+    private async Task LoadUser()
+    {
+        var result = await sessionStorage.GetAsync<string>("account");
+        if (result.Success)
+        {
+            user = result.Value;
+        }
     }
 
     private async Task LoadExam()
@@ -61,6 +72,7 @@
 
     private async void ShowScore()
     {
+        var task = LoadUser();
         var score = 0;
         var max = 0;
         Parallel.ForEach(solutionKey.Keys, qnum =>
@@ -75,7 +87,17 @@
             }
             catch (Exception) { }
         });
-        await JsRuntime.InvokeAsync<object>("alert", $"Your final score is {score.ToString()}/{max.ToString()}");
+        var percent = Convert.ToDouble(score) / Convert.ToDouble(max);
+        percent *= 100.0;
+        var res = Math.Round(percent, 2);
+        var task2 = JsRuntime.InvokeAsync<object>("alert", $"You got {score.ToString()}/{max.ToString()} answers correct, and a result of {res.ToString()}%");
+        await task;
+        var task3 = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        myCmd.CommandText = $"INSERT INTO {user}(exam, score, time) VALUES('{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
+        await task3;
+        myCmd.ExecuteNonQuery();
+        connection.Close();
         navigationManager.NavigateTo("/true");
     }
 }

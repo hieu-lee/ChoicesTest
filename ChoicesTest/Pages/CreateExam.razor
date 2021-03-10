@@ -10,8 +10,8 @@
 @if (!TitleSeted)
 {
     <h3>Set title for your new exam</h3>
-    <input type="text" @bind="Title" placeholder="Title" style="margin-left: 0;"><br />
-    <button @onclick="SetTitle" class="btn btn-primary" style="margin-top: 10px;">Confirm</button>
+    <input type="text" class="title-box" @bind="Title" placeholder="Title" style="margin-left: 0;"><br />
+    <button @onclick="SetTitle" class="btn btn-primary" style="margin-top: 20px;">Confirm</button>
 }
 
 
@@ -39,7 +39,7 @@
     </div>
     <br />
     <button class="btn btn-primary" @onclick="CreateNewQuestion">Add Question</button>
-    <button class="btn btn-primary" style="background-color: red; border: 1px solid red;" @onclick="DeleteExam">Delete</button>
+    <button class="btn btn-danger" @onclick="DeleteExam">Delete</button>
 }
 
 

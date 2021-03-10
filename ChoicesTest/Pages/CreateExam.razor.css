@@ -12,6 +12,17 @@ textarea {
         border-bottom-color: dodgerblue;
     }
 
+.title-box {
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    outline: none;
+}
+
+    .title-box:focus {
+        border-bottom-color: dodgerblue;
+    }
+
 input {
     position: absolute;
     margin-top: 5px;

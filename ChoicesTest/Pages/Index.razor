@@ -3,6 +3,7 @@
 @page "/removed/{RemovedExam}"
 @page "/{DoExam:bool}"
 @using Microsoft.Data.Sqlite;
+@using ChoicesTest.Models;
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
@@ -50,6 +51,13 @@ else
                     However, in order to be able to create exams, you have to log in as admin.<br />
                     If you are not the admin, you are only able to do exams.
                 </p>
+                GetHistory();
+                <h6>This is your history of doing:</h6>
+                <ul style="max-height:400px;overflow-y:scroll">
+                    <Virtualize Items="@history" Context="result">
+                        <li>Exam: @result.examCode; Score: @result.score.ToString()%; Finish time: @result.time</li>
+                    </Virtualize>
+                </ul>
             }
         }
         else
@@ -84,26 +92,54 @@ else
     [Parameter]
     public string RemovedExam { get; set; } = null;
     private string user = string.Empty;
+    private string account = string.Empty;
     private string NewExamCode;
     private SqliteConnection connection;
     private bool loading = true;
     private Dictionary<string, string> Exams = new();
+    private List<ExamResult> history = new();
 
-    private async void LoadData()
+    private async Task LoadAccountAsync()
     {
         try
         {
-            var result = await sessionStorage.GetAsync<string>("user");
+            var result = await sessionStorage.GetAsync<string>("account");
             if (result.Success)
             {
-                user = result.Value;
+                account = result.Value;
                 StateHasChanged();
             }
         }
         catch (Exception)
         {
+            account = string.Empty;
             user = string.Empty;
             await sessionStorage.DeleteAsync("user");
+            await sessionStorage.DeleteAsync("account");
+        }
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async void LoadData()
+    {
+        try
+        {
+            var task = LoadAccountAsync();
+            var result = await sessionStorage.GetAsync<string>("user");
+            if (result.Success)
+            {
+                user = result.Value;
+                await task;
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            account = string.Empty;
+            user = string.Empty;
+            await sessionStorage.DeleteAsync("user");
+            await sessionStorage.DeleteAsync("account");
         }
         loading = false;
         StateHasChanged();
@@ -142,6 +178,20 @@ else
         {
             Exams.Add(rdr.GetString(0), rdr.GetString(1));
         }
+    }
+
+    private async void GetHistory()
+    {
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        myCmd.CommandText = $"SELECT * FROM {account} ORDER BY score DESC";
+        await task;
+        using var rdr = myCmd.ExecuteReader();
+        while (rdr.Read())
+        {
+            history.Add(new ExamResult() { examCode = rdr.GetString(1), score = rdr.GetDecimal(2), time = rdr.GetString(3) });
+        }
+        connection.Close();
     }
 
     private async void CreateNewExam()
