@@ -158,17 +158,24 @@ else
             }
             var task = connection.OpenAsync();
             var myCmd = connection.CreateCommand();
-            var myCmd2 = connection.CreateCommand();
-            myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
             myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
-            await task;
-            myCmd.ExecuteNonQuery();
-            var task1 = myCmd2.ExecuteNonQueryAsync();
+            if (username == "admin")
+            {
+                var myCmd2 = connection.CreateCommand();
+                myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
+                await task;
+                myCmd.ExecuteNonQuery();
+                myCmd2.ExecuteNonQuery();
+            }
+            else
+            {
+                await task;
+                myCmd.ExecuteNonQuery();
+            }
             GetAccounts();
             connection.Close();
             await sessionStorage.SetAsync("user", name);
             await sessionStorage.SetAsync("account", username);
-            await task1;
             await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
             navigationManager.NavigateTo("/home");
         }

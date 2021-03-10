@@ -54,8 +54,9 @@ else
                 GetHistory();
                 <h6>This is your history of doing:</h6>
                 <ul style="max-height:400px;overflow-y:scroll">
-                    <Virtualize Items="@history" Context="result">
-                        <li>Exam: @result.examCode; Score: @result.score.ToString()%; Finish time: @result.time</li>
+                    <Virtualize Items="@history.Keys" Context="result">
+                        <li><img src="document.png" />Exam: @history[result].examCode<br />Score: @history[result].score.ToString()% at @history[result].time</li>
+                        <hr />
                     </Virtualize>
                 </ul>
             }
@@ -97,7 +98,7 @@ else
     private SqliteConnection connection;
     private bool loading = true;
     private Dictionary<string, string> Exams = new();
-    private List<ExamResult> history = new();
+    private Dictionary<int, ExamResult> history = new();
 
     private async Task LoadAccountAsync()
     {
@@ -182,6 +183,7 @@ else
 
     private async void GetHistory()
     {
+        history = new();
         var task = connection.OpenAsync();
         var myCmd = connection.CreateCommand();
         myCmd.CommandText = $"SELECT * FROM {account} ORDER BY score DESC";
@@ -189,7 +191,12 @@ else
         using var rdr = myCmd.ExecuteReader();
         while (rdr.Read())
         {
-            history.Add(new ExamResult() { examCode = rdr.GetString(1), score = rdr.GetDecimal(2), time = rdr.GetString(3) });
+            var id = rdr.GetInt32(0);
+            if (!history.ContainsKey(id))
+            {
+                history.Add(rdr.GetInt32(0), new ExamResult() { examCode = rdr.GetString(1), score = rdr.GetDecimal(2), time = rdr.GetString(3) });
+            }
+            
         }
         connection.Close();
     }
