@@ -23,7 +23,7 @@ else
         <h5>Available exams:</h5>
         if (!DoExam)
         {
-            if (user == "admin")
+            if (admin)
             {
                 if (Exams.Count == 0)
                 {
@@ -35,7 +35,7 @@ else
                 {
                     <ul style="max-height:450px;overflow-y:scroll">
                         <Virtualize Items="@Exams.Keys" Context="name">
-                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1</p></li>
+                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                         </Virtualize>
                     </ul>
                 }
@@ -74,7 +74,7 @@ else
             {
                 <ul style="max-height:450px;overflow-y:scroll">
                     <Virtualize Items="@Exams.Keys" Context="name">
-                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1</p></li>
+                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                     </Virtualize>
                 </ul>
             }
@@ -93,6 +93,8 @@ else
     public bool DoExam { get; set; } = false;
     [Parameter]
     public string RemovedExam { get; set; } = null;
+
+    private bool admin = false;
     private string user = string.Empty;
     private string account = string.Empty;
     private string NewExamCode;
@@ -118,6 +120,7 @@ else
             user = string.Empty;
             await sessionStorage.DeleteAsync("user");
             await sessionStorage.DeleteAsync("account");
+            await sessionStorage.SetAsync("admin", false);
         }
         loading = false;
         StateHasChanged();
@@ -129,9 +132,11 @@ else
         {
             var task = LoadAccountAsync();
             var result = await sessionStorage.GetAsync<string>("user");
-            if (result.Success)
+            var result1 = await sessionStorage.GetAsync<bool>("admin");
+            if (result.Success && result1.Success)
             {
                 user = result.Value;
+                admin = result1.Value;
                 await task;
                 StateHasChanged();
             }
@@ -142,6 +147,7 @@ else
             user = string.Empty;
             await sessionStorage.DeleteAsync("user");
             await sessionStorage.DeleteAsync("account");
+            await sessionStorage.SetAsync("admin", false);
         }
         loading = false;
         StateHasChanged();
@@ -155,7 +161,9 @@ else
         var task = connection.OpenAsync();
         var myCmd = connection.CreateCommand();
         var myCmd2 = connection.CreateCommand();
-        myCmd2.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT);";
+        var myCmd3 = connection.CreateCommand();
+        myCmd2.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT, admin INTEGER);";
+        myCmd3.CommandText = "CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, exam TEXT, score REAL, time TEXT);";
         if (RemovedExam is not null)
         {
             myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
@@ -167,6 +175,7 @@ else
         await task;
         myCmd.ExecuteNonQuery();
         myCmd2.ExecuteNonQuery();
+        myCmd3.ExecuteNonQuery();
         GetTables();
         connection.Close();
     }

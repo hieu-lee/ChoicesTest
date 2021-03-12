@@ -7,6 +7,7 @@ namespace ChoicesTest.Models
 {
     public class ExamResult
     {
+        public string username { get; set; }
         public string examCode { get; set; }
         public decimal score { get; set; }
         public string time { get; set; }

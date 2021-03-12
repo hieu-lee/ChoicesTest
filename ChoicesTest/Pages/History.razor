@@ -1,0 +1,130 @@
+﻿@page "/history"
+@using Microsoft.Data.Sqlite;
+@using ChoicesTest.Models;
+@inject NavigationManager navigationManager;
+@inject IJSRuntime JsRuntime;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject ProtectedSessionStorage sessionStorage;
+
+<h1>Welcome @user to Exam Access</h1>
+@if (loading)
+{
+    <p>Loading data...</p>
+    <div class="spinner-border text-primary"></div>
+    LoadData();
+}
+else
+{
+    if (!string.IsNullOrWhiteSpace(user))
+    {
+        if (admin)
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Exam</th>
+                        <th>Score</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <Virtualize Context="record" Items="@history">
+                        <tr>
+                            <td>@record.username</td>
+                            <td>@record.examCode</td>
+                            <td>@record.score.ToString()%</td>
+                            <td>@record.time</td>
+                        </tr>
+                    </Virtualize>
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <h3>Only admin can see the universal record, you can still see your personal record in the home page.</h3>
+        }
+    }
+    else
+    {
+        <h3>Log in to start using Exam Access</h3>
+    }
+}
+
+
+@code {
+    private List<ExamResult> history = new();
+    private SqliteConnection connection;
+    private bool loading = true;
+    private bool admin;
+    private string user;
+    private string account;
+
+    private async Task LoadAccountAsync()
+    {
+        try
+        {
+            var result = await sessionStorage.GetAsync<string>("account");
+            if (result.Success)
+            {
+                account = result.Value;
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            account = string.Empty;
+            user = string.Empty;
+            await sessionStorage.DeleteAsync("user");
+            await sessionStorage.DeleteAsync("account");
+            await sessionStorage.SetAsync("admin", false);
+        }
+        loading = false;
+        StateHasChanged();
+    }
+
+    private async void LoadData()
+    {
+        try
+        {
+            var task = LoadAccountAsync();
+            var result = await sessionStorage.GetAsync<string>("user");
+            var result1 = await sessionStorage.GetAsync<bool>("admin");
+            if (result.Success && result1.Success)
+            {
+                user = result.Value;
+                admin = result1.Value;
+                await task;
+                StateHasChanged();
+            }
+        }
+        catch (Exception)
+        {
+            account = string.Empty;
+            user = string.Empty;
+            await sessionStorage.DeleteAsync("user");
+            await sessionStorage.DeleteAsync("account");
+            await sessionStorage.SetAsync("admin", false);
+        }
+        loading = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        history = new();
+        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        connectionStringBuilder.DataSource = "exams.db";
+        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        var task = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        myCmd.CommandText = $"SELECT * FROM history ORDER BY score DESC";
+        await task;
+        using var rdr = myCmd.ExecuteReader();
+        while (rdr.Read())
+        {
+            history.Add(new ExamResult() { username = rdr.GetString(1), examCode = rdr.GetString(2), score = rdr.GetDecimal(3), time = rdr.GetString(4) });
+        }
+        connection.Close();
+    }
+}

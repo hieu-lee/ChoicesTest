@@ -33,6 +33,10 @@ else
                 <MatTextField @bind-Value="@lname" Label="Last Name" Required="true"></MatTextField><br />
                 <MatTextField @bind-Value="@username" Label="Username" Required="true"></MatTextField><br />
                 <MatTextField @bind-Value="@password" Label="Password" Type="password" Required="true"></MatTextField><br />
+                <MatRadioGroup @bind-Value="admin">
+                    <MatRadioButton Value="false" Style="padding-bottom: 13px;"></MatRadioButton><span>User</span>
+                    <MatRadioButton Value="true" Style="padding-bottom: 13px;"></MatRadioButton><span>Admin</span>
+                </MatRadioGroup><br />
                 <MatButton Raised="true" @onclick="SignUp">Sign Up</MatButton>
             </div>
         }
@@ -48,6 +52,8 @@ else
 @code {
     [Parameter]
     public bool register { get; set; } = false;
+
+    private bool admin = false;
     private bool loading = true;
     private bool logged;
     private SqliteConnection connection;
@@ -55,7 +61,7 @@ else
     private string lname = string.Empty;
     private string username = string.Empty;
     string password = string.Empty;
-    private Dictionary<string, Tuple<string, string>> Accounts = new();
+    private Dictionary<string, Tuple<string, string, int>> Accounts = new();
 
     private async void LoadData()
     {
@@ -100,7 +106,7 @@ else
         {
             if (!Accounts.ContainsKey(rdr.GetString(0)))
             {
-                Accounts.Add(rdr.GetString(0), new Tuple<string, string>(rdr.GetString(1), rdr.GetString(2)));
+                Accounts.Add(rdr.GetString(0), new Tuple<string, string, int>(rdr.GetString(1), rdr.GetString(2), rdr.GetInt16(3)));
             }
         }
     }
@@ -115,6 +121,14 @@ else
             {
                 await sessionStorage.SetAsync("user", Accounts[username].Item2);
                 await sessionStorage.SetAsync("account", username);
+                if (Accounts[username].Item3 == 1)
+                {
+                    await sessionStorage.SetAsync("admin", true);
+                }
+                else
+                {
+                    await sessionStorage.SetAsync("admin", false);
+                }
                 await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
                 navigationManager.NavigateTo("/home");
                 return;
@@ -152,28 +166,25 @@ else
         if (!Accounts.ContainsKey(username))
         {
             var name = $"{fname} {lname}";
-            if (username == "admin")
-            {
-                name = "admin";
-            }
             var task = connection.OpenAsync();
             var myCmd = connection.CreateCommand();
-            myCmd.CommandText = $"INSERT INTO accounts(username, password, name) VALUES('{username}', '{password}', '{name}')";
-            if (username != "admin")
+            if (admin)
             {
-                var myCmd2 = connection.CreateCommand();
-                myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
-                await task;
-                myCmd.ExecuteNonQuery();
-                myCmd2.ExecuteNonQuery();
+                myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 1)";
             }
             else
             {
-                await task;
-                myCmd.ExecuteNonQuery();
+                myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 0)";
             }
+            var myCmd2 = connection.CreateCommand();
+            myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
+            await task;
+            myCmd.ExecuteNonQuery();
+            myCmd2.ExecuteNonQuery();
             GetAccounts();
             connection.Close();
+            await sessionStorage.SetAsync("admin", admin);
+            admin = false;
             await sessionStorage.SetAsync("user", name);
             await sessionStorage.SetAsync("account", username);
             await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
@@ -190,6 +201,7 @@ else
     {
         await sessionStorage.DeleteAsync("user");
         await sessionStorage.DeleteAsync("account");
+        await sessionStorage.SetAsync("admin", false);
         await JsRuntime.InvokeAsync<object>("alert", "Successfully logged out!");
         loading = true;
         StateHasChanged();

@@ -155,15 +155,15 @@
         var res = Math.Round(percent, 2);
         var task2 = JsRuntime.InvokeAsync<object>("alert", $"You got {score.ToString()}/{max.ToString()} answers correct, and a result of {res.ToString()}%");
         await task;
-        if (user != "admin")
-        {
-            var task3 = connection.OpenAsync();
-            var myCmd = connection.CreateCommand();
-            myCmd.CommandText = $"INSERT INTO {user}(exam, score, time) VALUES('{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
-            await task3;
-            myCmd.ExecuteNonQuery();
-            connection.Close();
-        }
+        var task3 = connection.OpenAsync();
+        var myCmd = connection.CreateCommand();
+        var myCmd1 = connection.CreateCommand();
+        myCmd.CommandText = $"INSERT INTO {user}(exam, score, time) VALUES('{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
+        myCmd1.CommandText = $"INSERT INTO history(username, exam, score, time) VALUES('{user}', '{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
+        await task3;
+        myCmd.ExecuteNonQuery();
+        myCmd1.ExecuteNonQuery();
+        connection.Close();
         StateHasChanged();
         await task2;
     }

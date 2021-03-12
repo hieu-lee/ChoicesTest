@@ -79,37 +79,24 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var connectionStringBuilder = new SqliteConnectionStringBuilder();
+        connectionStringBuilder.DataSource = "exams.db";
+        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
         if (TitleSeted)
         {
-            await CreateNewDb();
+            await LoadQuestion();
         }
         SetTime();
     }
 
-    private async Task InsertNewExamAsync()
+    private async Task LoadQuestion()
     {
         var task = connection.OpenAsync();
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time) VALUES('{ExamName}', '{Title}', 0);";
-        await task;
-        cmd.ExecuteNonQuery();
-        connection.Close();
-    }
-
-    private async Task CreateNewDb()
-    {
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
-        var task = connection.OpenAsync();
-        var tablecmd = connection.CreateCommand();
-        tablecmd.CommandText = $"CREATE TABLE IF NOT EXISTS {ExamName}(id INTEGER PRIMARY KEY, title TEXT, answer_a TEXT, answer_b TEXT, answer_c TEXT, answer_d TEXT, answer TEXT);";
-        await task;
-        tablecmd.ExecuteNonQuery();
         var myCmd = connection.CreateCommand();
         try
         {
             myCmd.CommandText = $"SELECT * FROM {ExamName}";
+            await task;
             using var rdr = myCmd.ExecuteReader();
             while (rdr.Read())
             {
@@ -118,6 +105,19 @@
             }
         }
         catch (Exception) { };
+        connection.Close();
+    }
+
+    private async Task CreateNewDb()
+    {
+        var task = connection.OpenAsync();
+        var tablecmd = connection.CreateCommand();
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time) VALUES('{ExamName}', '{Title}', 0);";
+        tablecmd.CommandText = $"CREATE TABLE {ExamName}(id INTEGER PRIMARY KEY, title TEXT, answer_a TEXT, answer_b TEXT, answer_c TEXT, answer_d TEXT, answer TEXT);";
+        await task;
+        cmd.ExecuteNonQuery();
+        tablecmd.ExecuteNonQuery();
         connection.Close();
     }
 
@@ -134,7 +134,6 @@
             Title = Title.First().ToString().ToUpper() + Title.Substring(1);
             TitleSeted = true;
             await CreateNewDb();
-            await InsertNewExamAsync();
             StateHasChanged();
         }
     }
@@ -241,6 +240,7 @@
                 NewAnswerD = string.Empty;
                 Answer = string.Empty;
                 CurrentQuestionNumber++;
+                StateHasChanged();
                 await task1;
             }
             else
