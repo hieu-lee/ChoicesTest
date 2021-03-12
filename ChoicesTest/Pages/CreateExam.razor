@@ -3,6 +3,7 @@
 @using ChoicesTest.Models;
 @using ChoicesTest.Components;
 @using Microsoft.Data.Sqlite;
+@inject IMatDialogService MatDialogService
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
 
@@ -10,8 +11,9 @@
 @if (!TitleSeted)
 {
     <h3>Set title for your new exam</h3>
-    <input type="text" class="title-box" @bind="Title" placeholder="Title" style="margin-left: 0;"><br />
-    <button @onclick="SetTitle" class="btn btn-primary" style="margin-top: 20px;">Confirm</button>
+    <MatTextField @bind-Value="Title" Label="Title" Required="true"></MatTextField>
+    <br />
+    <MatButton Unelevated="true" @onclick="SetTitle">Confirm</MatButton>
 }
 
 
@@ -20,30 +22,32 @@
     <h1>@Title</h1>
     <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
     <ul>
-        @foreach (QuestionInfo ques in questions)
-        {
+        <Virtualize Items="questions" Context="ques">
             <li>
                 <Question number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
                 </Question>
             </li>
-        }
+        </Virtualize>
     </ul>
     <hr />
+    <div style="margin-bottom: 15px;">
+        <MatTextField Type="number" TValue="int" @bind-Value="minutes" Label="Minutes"></MatTextField>
+        <MatButton @onclick="SetTime" Unelevated="true" Style="margin-left: 10px;">Set time limit</MatButton>
+    </div>
     <div>
-        <textarea @bind="NewTitle" placeholder="Question @CurrentQuestionNumber.ToString()" style="width: 462px; outline: none; height: 30px;"></textarea>
+        <MatTextField @bind-Value="NewTitle" Label="Question Title" TextArea="true" Style="width:478px; resize:vertical; height: 55px"></MatTextField>
         <div class="new-answers" style="margin-top: 10px;">
-            <div><input name="choice" type="radio" @onclick="() => { ChoiceA = true; ChoiceB = false; ChoiceC = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer A" @bind="NewAnswerA" /></div>
-            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceB = true; ChoiceA = false; ChoiceC = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer B" @bind="NewAnswerB" /></div>
-            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceC = true; ChoiceB = false; ChoiceA = false; ChoiceD = false; }" /><textarea class="answer-box" placeholder="Answer C" @bind="NewAnswerC" /></div>
-            <div style="margin-top: 10px;"><input name="choice" type="radio" @onclick="() => { ChoiceD = true; ChoiceB = false; ChoiceC = false; ChoiceA = false; }" /><textarea class="answer-box" placeholder="Answer D" @bind="NewAnswerD" /></div>
+            <MatRadioGroup @bind-Value="@Answer" TValue="string">
+                <MatRadioButton Value="@("A")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerA" TextArea="true" Label="Answer A" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                <MatRadioButton Value="@("B")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerB" TextArea="true" Label="Answer B" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                <MatRadioButton Value="@("C")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerC" TextArea="true" Label="Answer C" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                <MatRadioButton Value="@("D")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerD" TextArea="true" Label="Answer D" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+            </MatRadioGroup>
         </div>
     </div>
-    <br />
-    <button class="btn btn-primary" @onclick="CreateNewQuestion">Add Question</button>
-    <button class="btn btn-danger" style="margin-left: 10px;" @onclick="DeleteExam">Delete</button>
-    <div style="margin-top: 15px;">
-        <input class="title-box" style="width: 123px;" type="number" @bind="minutes" min="5" max="300" placeholder="Minutes"/><br />
-        <button class="btn btn-primary" style="margin-top: 20px; margin-bottom: 10px;" @onclick="SetTime">Set time limit</button>
+    <div style="margin-bottom:20px; margin-top: 10px;">
+        <MatButton Unelevated="true" @onclick="CreateNewQuestion">Add Question</MatButton>
+        <MatButton @onclick="DeleteExam" Style="margin-left: 10px;">Delete</MatButton>
     </div>
 }
 
@@ -64,10 +68,6 @@
     private int prevTimeLimit = 0;
     private string TimeDisplay = "none";
     private SqliteConnection connection;
-    private bool ChoiceA = false;
-    private bool ChoiceB = false;
-    private bool ChoiceC = false;
-    private bool ChoiceD = false;
     private string NewTitle = string.Empty;
     private string NewAnswerA = string.Empty;
     private string NewAnswerB = string.Empty;
@@ -149,34 +149,6 @@
         connection.Close();
     }
 
-    private void SetAnswer()
-    {
-        if (ChoiceA)
-        {
-            Answer = "A";
-            ChoiceA = false;
-            return;
-        }
-        if (ChoiceB)
-        {
-            Answer = "B";
-            ChoiceB = false;
-            return;
-        }
-        if (ChoiceC)
-        {
-            Answer = "C";
-            ChoiceC = false;
-            return;
-        }
-        if (ChoiceD)
-        {
-            Answer = "D";
-            ChoiceD = false;
-            return;
-        }
-    }
-
     private async void DeleteExam()
     {
         var task = connection.OpenAsync();
@@ -200,11 +172,26 @@
             connection.Close();
             TimeDisplay = "block";
             prevTimeLimit = minutes;
+            return;
         }
-        else if (minutes == 0)
+        else if (minutes == 0 && minutes != prevTimeLimit)
         {
+            var task = connection.OpenAsync();
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = $"UPDATE exam_collection SET time = 0 WHERE code = '{ExamName}';";
+            await task;
+            cmd.ExecuteNonQuery();
+            connection.Close();
             TimeDisplay = "none";
             prevTimeLimit = 0;
+            return;
+        }
+        else
+        {
+            TimeDisplay = "none";
+            minutes = 0;
+            prevTimeLimit = 0;
+            return;
         }
     }
 
@@ -222,7 +209,7 @@
                 await JsRuntime.InvokeAsync<object>("alert", "The question must not contain special characters");
                 return;
             }
-            if (ChoiceA || ChoiceB || ChoiceC || ChoiceD)
+            if (!string.IsNullOrWhiteSpace(Answer))
             {
                 var Answers = new HashSet<string>();
                 NewTitle.Trim();
@@ -239,7 +226,6 @@
                     await JsRuntime.InvokeAsync<object>("alert", "Your given answers must be different from each other.");
                     return;
                 }
-                SetAnswer();
                 if (NewTitle.Last() != '?')
                 {
                     NewTitle += "?";
@@ -253,17 +239,20 @@
                 NewAnswerB = string.Empty;
                 NewAnswerC = string.Empty;
                 NewAnswerD = string.Empty;
+                Answer = string.Empty;
                 CurrentQuestionNumber++;
                 await task1;
             }
             else
             {
                 await JsRuntime.InvokeAsync<object>("alert", "Please choose a correct answer to the question.");
+                return;
             }
         }
         else
         {
             await JsRuntime.InvokeAsync<object>("alert", "Please fill in all parts of the new question.");
+            return;
         }
     }
 }

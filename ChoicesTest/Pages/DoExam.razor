@@ -12,18 +12,17 @@
 <h1>@ExamName</h1>
 <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
 <ul>
-    @foreach (QuestionInfo ques in questions)
-    {
+    <Virtualize Items="@questions" Context="ques">
         <li style="background-color:@ques.color;">
             <Question personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
             </Question>
             <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
             <hr />
         </li>
-    }
+    </Virtualize>
 </ul>
 <div class="button-holder">
-    <button class="btn btn-primary" style="margin-bottom: 10px;" @onclick="ShowScore">Submit</button>
+    <MatButton Unelevated="true" @onclick="ShowScore">Submit</MatButton>
 </div>
 
 @code {
@@ -121,7 +120,10 @@
         {
             return;
         }
-        timer.Enabled = false;
+        if (minutes > 0)
+        {
+            timer.Enabled = false;
+        }
         submitted = true;
         var task = LoadUser();
         var score = 0;

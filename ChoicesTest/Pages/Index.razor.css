@@ -1,12 +1,4 @@
-﻿input {
-    outline: none;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    margin-top: 5px;
-}
-
-ul {
+﻿ul {
     margin: 0;
     margin-top: 10px;
 }
@@ -26,7 +18,3 @@ ul img {
         height: 55px;
         transition: all 0.5s;
     }
-
-input:focus {
-    border-bottom-color: dodgerblue;
-}

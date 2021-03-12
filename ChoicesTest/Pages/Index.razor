@@ -41,9 +41,9 @@ else
                 }
                 <hr />
                 <h3>Add new exam</h3>
-                <input @bind="NewExamCode" type="text" placeholder="New examcode">
+                <MatTextField @bind-Value="NewExamCode" Label="New Examcode"></MatTextField>
                 <br />
-                <button class="btn btn-primary" style="margin-top: 10px;" @onclick="CreateNewExam">Add new exam</button>
+                <MatButton @onclick="CreateNewExam" Unelevated="true">Add</MatButton>
             }
             else
             {

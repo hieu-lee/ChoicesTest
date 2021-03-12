@@ -9,7 +9,8 @@
 <h1>Welcome to Exam Access</h1>
 @if (loading)
 {
-    <p>Loading...</p>
+    <p>Loading data...</p>
+    <div class="spinner-border text-primary"></div>
     LoadData();
 }
 else
@@ -19,27 +20,27 @@ else
         if (!register)
         {
             <div>
-                <input type="text" @bind="username" placeholder="Username" /><br />
-                <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
+                <MatTextField @bind-Value="@username" Label="Username" Required="true"></MatTextField><br />
+                <MatTextField @bind-Value="@password" Label="Password" Type="password" Required="true"></MatTextField><br />
                 <p>Don't have an account yet? <a @onclick="() => { username = string.Empty; password = string.Empty; }" href="log-in/true">Register</a></p>
-                <button class="btn btn-primary" @onclick="SignIn">Log In</button>
+                <MatButton Raised="true" @onclick="SignIn">Log In</MatButton>
             </div>
         }
         else
         {
             <div>
-                <input type="text" @bind="fname" placeholder="First Name" /><br />
-                <input style="margin-top: 10px;" type="text" @bind="lname" placeholder="Last Name" /><br />
-                <input style="margin-top: 10px;" type="text" @bind="username" placeholder="Username" /><br />
-                <input style="margin-top: 10px;" type="password" @bind="password" placeholder="Password" /><br />
-                <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignUp">Sign Up</button>
+                <MatTextField @bind-Value="@fname" Label="First Name" Required="true"></MatTextField><br />
+                <MatTextField @bind-Value="@lname" Label="Last Name" Required="true"></MatTextField><br />
+                <MatTextField @bind-Value="@username" Label="Username" Required="true"></MatTextField><br />
+                <MatTextField @bind-Value="@password" Label="Password" Type="password" Required="true"></MatTextField><br />
+                <MatButton Raised="true" @onclick="SignUp">Sign Up</MatButton>
             </div>
         }
     }
     else
     {
         <h5>You have already logged in</h5>
-        <button class="btn btn-primary" style="margin-top: 10px;" @onclick="SignOut">Log out</button>
+        <MatButton Raised="true" @onclick="SignOut">Log Out</MatButton>
     }
 }
 
@@ -133,16 +134,16 @@ else
 
     private async void SignUp()
     {
-        fname = fname.Trim();
-        fname = fname.First().ToString().ToUpper() + fname.Substring(1);
-        lname = lname.Trim();
-        lname = lname.First().ToString().ToUpper() + lname.Substring(1);
-        username = username.Trim();
         if (string.IsNullOrWhiteSpace(fname) || string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             await JsRuntime.InvokeAsync<object>("alert", "Please fill in all the information!");
             return;
         }
+        fname = fname.Trim();
+        fname = fname.First().ToString().ToUpper() + fname.Substring(1);
+        lname = lname.Trim();
+        lname = lname.First().ToString().ToUpper() + lname.Substring(1);
+        username = username.Trim();
         if (password.Length < 6 || password.Contains(' '))
         {
             await JsRuntime.InvokeAsync<object>("alert", "The password must have at least 6 characters and not contain any whitespace");

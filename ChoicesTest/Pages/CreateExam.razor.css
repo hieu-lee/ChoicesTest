@@ -1,48 +1,6 @@
 ﻿h1 {
     text-align: center;
 }
-
-textarea {
-    border-top: none;
-    border-left: none;
-    border-right: none;
-}
-
-    textarea:focus {
-        border-bottom-color: dodgerblue;
-    }
-
-.title-box {
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    outline: none;
-}
-
-    .title-box:focus {
-        border-bottom-color: dodgerblue;
-    }
-
-input {
-    position: absolute;
-    margin-top: 5px;
-}
-
-.answer-box {
-    height: 30px;
-    margin-left: 25px;
-    outline: none;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    width: 438px;
-}
-
-    .answer-box:focus {
-        border-bottom-color: dodgerblue;
-    }
-
-
 ul {
     padding: 0;
 }
