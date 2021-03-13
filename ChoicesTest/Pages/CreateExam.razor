@@ -22,6 +22,7 @@
 {
     <h1>@Title</h1>
     <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
+    <h5 style="text-align:center;">Private: @Privacy.ToString()</h5>
     <ul>
         <Virtualize Items="questions" Context="ques">
             <li>
@@ -53,6 +54,7 @@
     <div style="margin-bottom:20px; margin-top: 10px;">
         <MatButton Unelevated="true" @onclick="CreateNewQuestion">Add Question</MatButton>
         <MatButton @onclick="DeleteExam" Style="margin-left: 10px;">Delete</MatButton>
+        <MatButton @onclick="ChangeExamPrivacy" Style="margin-left: 10px;">Change Privacy</MatButton>
     </div>
 }
 
@@ -73,6 +75,7 @@
     [Parameter]
     public string questionLabel { get; set; }
 
+    private bool Privacy = false;
     private string prevLabel = "Question";
     private int prevTimeLimit = 0;
     private string TimeDisplay = "none";
@@ -93,6 +96,7 @@
         {
             await LoadQuestion();
         }
+        Privacy = await appData.GetExamPrivacyAsync(ExamName);
         SetTime();
     }
 
@@ -120,7 +124,7 @@
         var task = connection.OpenAsync();
         var tablecmd = connection.CreateCommand();
         var cmd = connection.CreateCommand();
-        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time, label) VALUES('{ExamName}', '{Title}', 0, 'Question');";
+        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time, label, privacy) VALUES('{ExamName}', '{Title}', 0, 'Question', 0);";
         tablecmd.CommandText = $"CREATE TABLE {ExamName}(id INTEGER PRIMARY KEY, title TEXT, answer_a TEXT, answer_b TEXT, answer_c TEXT, answer_d TEXT, answer TEXT);";
         await task;
         cmd.ExecuteNonQuery();
@@ -190,7 +194,26 @@
                 return;
             }
         }
+    }
 
+    private async void ChangeExamPrivacy()
+    {
+        var task = connection.OpenAsync();
+        var cmd = connection.CreateCommand();
+        if (!Privacy)
+        {
+            cmd.CommandText = $"UPDATE exam_collection SET privacy = 1 WHERE code = '{ExamName}';";
+        }
+        else
+        {
+            cmd.CommandText = $"UPDATE exam_collection SET privacy = 0 WHERE code = '{ExamName}';";
+        }
+        Privacy = !Privacy;
+        await task;
+        cmd.ExecuteNonQuery();
+        connection.Close();
+        prevLabel = questionLabel;
+        return;
     }
 
     private async void SetTime()

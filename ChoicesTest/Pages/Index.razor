@@ -55,8 +55,7 @@ else
                 <h6>This is your history of doing:</h6>
                 <ul style="max-height:375px;overflow-y:scroll">
                     <Virtualize Items="@history.Keys" Context="result">
-                        <li><img src="document.png" />Exam: @history[result].examCode<br />Score: @history[result].score.ToString()% at @history[result].time</li>
-                        <hr />
+                        <li><img src="document.png" />Exam: @history[result].examCode<br />Score: @history[result].score.ToString()% at @history[result].time<hr /></li>                   
                     </Virtualize>
                 </ul>
             }
@@ -182,14 +181,21 @@ else
         if (string.IsNullOrWhiteSpace(NewExamCode))
         {
             await JsRuntime.InvokeAsync<object>("alert", "Please fill in the examcode.");
+            return;
         }
         else
         {
+            if (NewExamCode.Contains('\''))
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "The examcode cannot contain any special characters");
+                return;
+            }
             NewExamCode.Trim();
             if (Exams.ContainsKey(NewExamCode))
             {
                 await JsRuntime.InvokeAsync<object>("alert", "Examcode has already existed!");
                 NewExamCode = string.Empty;
+                return;
             }
             else
             {

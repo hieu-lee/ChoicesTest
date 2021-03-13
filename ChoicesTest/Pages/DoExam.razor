@@ -37,6 +37,7 @@
     [Parameter]
     public string questionLabel { get; set; } = "Question";
 
+    private bool Privacy = false;
     private bool haveQuesions = false;
     private int TimeLeft;
     private static Timer timer;
@@ -77,6 +78,7 @@
     {
         submitted = false;
         await LoadExam();
+        Privacy = await appData.GetExamPrivacyAsync(ExamCode);
         if (minutes > 0)
         {
             StartTimer();
@@ -132,28 +134,48 @@
             LoadUser();
             var score = 0;
             var max = 0;
-            Parallel.ForEach(solutionKey.Keys, qnum =>
+            if (!Privacy)
             {
-                max++;
-                try
+                Parallel.ForEach(solutionKey.Keys, qnum =>
                 {
-                    if (solutionKey[qnum] == personalWork[qnum])
+                    max++;
+                    try
                     {
-                        questions[qnum - 1].color = "#95FF80";
-                        score++;
+                        if (solutionKey[qnum] == personalWork[qnum])
+                        {
+                            questions[qnum - 1].color = "#95FF80";
+                            score++;
+                        }
+                        else
+                        {
+                            questions[qnum - 1].color = "#FF4D6A";
+                            questions[qnum - 1].answerDisplay = "block";
+                        }
                     }
-                    else
+                    catch (Exception)
                     {
                         questions[qnum - 1].color = "#FF4D6A";
                         questions[qnum - 1].answerDisplay = "block";
                     }
-                }
-                catch (Exception)
+                });
+            }
+            else
+            {
+                Parallel.ForEach(solutionKey.Keys, qnum =>
                 {
-                    questions[qnum - 1].color = "#FF4D6A";
-                    questions[qnum - 1].answerDisplay = "block";
-                }
-            });
+                    max++;
+                    try
+                    {
+                        if (solutionKey[qnum] == personalWork[qnum])
+                        {
+                            score++;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                    }
+                });
+            }
             var percent = Convert.ToDouble(score) / Convert.ToDouble(max);
             percent *= 100.0;
             var res = Math.Round(percent, 2);
