@@ -55,6 +55,7 @@
         <MatButton Unelevated="true" @onclick="CreateNewQuestion">Add Question</MatButton>
         <MatButton @onclick="DeleteExam" Style="margin-left: 10px;">Delete</MatButton>
         <MatButton @onclick="ChangeExamPrivacy" Style="margin-left: 10px;">Change Privacy</MatButton>
+        <MatButton @onclick="DeleteLastQuestion" Style="margin-left: 10px;">Pop Question</MatButton>
     </div>
 }
 
@@ -149,6 +150,16 @@
         }
     }
 
+    private async void PopFromDb()
+    {
+        var task = connection.OpenAsync();
+        var deleteCmd = connection.CreateCommand();
+        deleteCmd.CommandText = $"DELETE FROM {ExamName} WHERE id = {CurrentQuestionNumber}";
+        await task;
+        deleteCmd.ExecuteNonQuery();
+        connection.Close();
+    }
+
     private async Task InsertQuestionAsync(QuestionInfo info)
     {
         var task = connection.OpenAsync();
@@ -194,6 +205,17 @@
                 return;
             }
         }
+    }
+
+    private void DeleteLastQuestion()
+    {
+        if (CurrentQuestionNumber > 1)
+        {
+            questions.RemoveAt(CurrentQuestionNumber - 2);
+            CurrentQuestionNumber--;
+            PopFromDb();
+        }
+        
     }
 
     private async void ChangeExamPrivacy()
@@ -253,7 +275,7 @@
 
     private async void CreateNewQuestion()
     {
-        if (CurrentQuestionNumber == 100)
+        if (CurrentQuestionNumber == 200)
         {
             await JsRuntime.InvokeAsync<object>("alert", "You have reached the maximum number of questions for this exam!");
             return;
