@@ -11,21 +11,24 @@
 @inject ProtectedSessionStorage sessionStorage
 @inject AppData appData
 
-<h1>@ExamName</h1>
-<h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
-<ul>
-    <Virtualize Items="@questions" Context="ques">
-        <li style="background-color:@ques.color;">
-            <Question label="@questionLabel" personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
-            </Question>
-            <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
-            <hr />
-        </li>
-    </Virtualize>
-</ul>
-<div class="button-holder">
-    <MatButton Unelevated="true" @onclick="ShowScore">Submit</MatButton>
+<div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface" style="padding: 10px; margin-bottom: 20px;">
+    <h1>@ExamName</h1>
+    <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
+    <ul>
+        <Virtualize Items="@questions" Context="ques">
+            <li style="background-color:@ques.color;">
+                <Question label="@questionLabel" personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+                </Question>
+                <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
+            </li>
+        </Virtualize>
+    </ul>
+    <div class="button-holder">
+        <MatButton Unelevated="true" @onclick="ShowScore">Submit</MatButton>
+    </div>
 </div>
+
+
 
 @code {
     [Parameter]

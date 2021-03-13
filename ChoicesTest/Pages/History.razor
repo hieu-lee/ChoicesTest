@@ -18,26 +18,28 @@ else
     {
         if (admin)
         {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Exam</th>
-                        <th>Score</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <Virtualize Context="record" Items="@history">
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface" style="max-height: 600px; overflow-y:scroll; margin-top: 50px;">
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>@record.username</td>
-                            <td>@record.examCode</td>
-                            <td>@record.score.ToString()%</td>
-                            <td>@record.time</td>
+                            <th>User</th>
+                            <th>Exam</th>
+                            <th>Score</th>
+                            <th>Time</th>
                         </tr>
-                    </Virtualize>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <Virtualize Context="record" Items="@history">
+                            <tr>
+                                <td>@record.username</td>
+                                <td>@record.examCode</td>
+                                <td>@record.score.ToString()%</td>
+                                <td>@record.time</td>
+                            </tr>
+                        </Virtualize>
+                    </tbody>
+                </table>
+            </div>
         }
         else
         {
@@ -46,7 +48,7 @@ else
     }
     else
     {
-        <h3>Log in to start using Exam Access</h3>
+        <h4>Log in to start using Exam Access</h4>
     }
 }
 

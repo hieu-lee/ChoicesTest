@@ -20,19 +20,20 @@
 
 @if (TitleSeted)
 {
-    <h1>@Title</h1>
-    <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
-    <h5 style="text-align:center;">Private: @Privacy.ToString()</h5>
-    <ul>
-        <Virtualize Items="questions" Context="ques">
-            <li>
-                <Question label="@questionLabel" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
-                </Question>
-            </li>
-        </Virtualize>
-    </ul>
-    <hr />
-    <div style="margin-bottom: 15px;">
+    <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface">
+        <h1>@Title</h1>
+        <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
+        <h5 style="text-align:center;">Private: @Privacy.ToString()</h5>
+        <ul style="margin: 0 10px;">
+            <Virtualize Items="questions" Context="ques">
+                <li>
+                    <Question label="@questionLabel" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+                    </Question>
+                </li>
+            </Virtualize>
+        </ul>
+    </div>
+    <div style="margin: 15px 0;">
         <MatTextField @bind-Value="questionLabel" Label="Question label"></MatTextField>
         <MatButton @onclick="SetLabel" Unelevated="true" Style="margin-left: 10px;">Set common label</MatButton>
     </div>
@@ -215,7 +216,7 @@
             CurrentQuestionNumber--;
             PopFromDb();
         }
-        
+
     }
 
     private async void ChangeExamPrivacy()
