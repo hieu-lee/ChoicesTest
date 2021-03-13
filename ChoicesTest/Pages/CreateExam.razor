@@ -1,5 +1,5 @@
 ﻿@page "/exam-create/{ExamName}"
-@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}/{minutes:int}"
+@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}/{minutes:int}/{questionLabel}"
 @using ChoicesTest.Models;
 @using ChoicesTest.Components;
 @using Microsoft.Data.Sqlite;
@@ -25,18 +25,22 @@
     <ul>
         <Virtualize Items="questions" Context="ques">
             <li>
-                <Question number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+                <Question label="@questionLabel" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
                 </Question>
             </li>
         </Virtualize>
     </ul>
     <hr />
     <div style="margin-bottom: 15px;">
+        <MatTextField @bind-Value="questionLabel" Label="Question label"></MatTextField>
+        <MatButton @onclick="SetLabel" Unelevated="true" Style="margin-left: 10px;">Set common label</MatButton>
+    </div>
+    <div style="margin-bottom: 15px;">
         <MatTextField Type="number" TValue="int" @bind-Value="minutes" Label="Minutes"></MatTextField>
         <MatButton @onclick="SetTime" Unelevated="true" Style="margin-left: 10px;">Set time limit</MatButton>
     </div>
     <div>
-        <MatTextField @bind-Value="NewTitle" Label="Question Title" TextArea="true" Style="width:478px; resize:vertical; height: 55px"></MatTextField>
+        <MatTextField @bind-Value="NewTitle" Label="Question Content" TextArea="true" Style="width:478px; resize:vertical; height: 55px"></MatTextField>
         <div class="new-answers" style="margin-top: 10px;">
             <MatRadioGroup @bind-Value="@Answer" TValue="string">
                 <MatRadioButton Value="@("A")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerA" TextArea="true" Label="Answer A" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
@@ -66,6 +70,10 @@
     [Parameter]
     public int minutes { get; set; } = 0;
 
+    [Parameter]
+    public string questionLabel { get; set; }
+
+    private string prevLabel = "Question";
     private int prevTimeLimit = 0;
     private string TimeDisplay = "none";
     private SqliteConnection connection;
@@ -107,12 +115,12 @@
         connection.Close();
     }
 
-    private async Task CreateNewDb()
+    private async void CreateNewDb()
     {
         var task = connection.OpenAsync();
         var tablecmd = connection.CreateCommand();
         var cmd = connection.CreateCommand();
-        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time) VALUES('{ExamName}', '{Title}', 0);";
+        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time, label) VALUES('{ExamName}', '{Title}', 0, 'Question');";
         tablecmd.CommandText = $"CREATE TABLE {ExamName}(id INTEGER PRIMARY KEY, title TEXT, answer_a TEXT, answer_b TEXT, answer_c TEXT, answer_d TEXT, answer TEXT);";
         await task;
         cmd.ExecuteNonQuery();
@@ -132,7 +140,7 @@
             Title.Trim();
             Title = Title.First().ToString().ToUpper() + Title.Substring(1);
             TitleSeted = true;
-            await CreateNewDb();
+            CreateNewDb();
             StateHasChanged();
         }
     }
@@ -156,6 +164,33 @@
         tablecmd.ExecuteNonQuery();
         await JsRuntime.InvokeAsync<object>("alert", "Successfully deleted the exam.");
         navigationManager.NavigateTo($"/removed/{ExamName}");
+    }
+
+    private async void SetLabel()
+    {
+        if (!string.IsNullOrWhiteSpace(questionLabel))
+        {
+            if (questionLabel.Contains('\''))
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "The lable cannot contain any special character");
+                return;
+            }
+            questionLabel = questionLabel.Trim();
+            questionLabel = questionLabel.First().ToString().ToUpper() + questionLabel.Substring(1);
+            StateHasChanged();
+            if (questionLabel != prevLabel)
+            {
+                var task = connection.OpenAsync();
+                var cmd = connection.CreateCommand();
+                cmd.CommandText = $"UPDATE exam_collection SET label = '{questionLabel}' WHERE code = '{ExamName}';";
+                await task;
+                cmd.ExecuteNonQuery();
+                connection.Close();
+                prevLabel = questionLabel;
+                return;
+            }
+        }
+
     }
 
     private async void SetTime()

@@ -2,7 +2,7 @@
 
 <div class="question-holder" style="margin-top: 10px;">
     <div class="title">
-        <p>Question @number.ToString(): @question</p>
+        <p>@label @number.ToString(). @question</p>
     </div>
     
     <div>
@@ -32,4 +32,6 @@
     public string answerC { get; set; }
     [Parameter]
     public string answerD { get; set; }
+    [Parameter]
+    public string label { get; set; } = "Question";
 }

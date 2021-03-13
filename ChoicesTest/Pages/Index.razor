@@ -13,7 +13,7 @@
 @if (loading)
 {
     <p>Loading data...</p>
-    <div class="spinner-border text-primary"></div>
+    <MatProgressCircle Indeterminate="true" Size="MatProgressCircleSize.Medium" />
 }
 else
 {
@@ -34,7 +34,7 @@ else
                 {
                     <ul style="max-height:450px;overflow-y:scroll">
                         <Virtualize Items="@Exams.Keys" Context="name">
-                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
+                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item2.ToString()/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                         </Virtualize>
                     </ul>
                 }
@@ -73,7 +73,7 @@ else
             {
                 <ul style="max-height:450px;overflow-y:scroll">
                     <Virtualize Items="@Exams.Keys" Context="name">
-                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item2.ToString()"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
+                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item2.ToString()/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                     </Virtualize>
                 </ul>
             }
@@ -98,7 +98,7 @@ else
     private string NewExamCode;
     private SqliteConnection connection;
     private bool loading = true;
-    private Dictionary<string, Tuple<string, int>> Exams = new();
+    private Dictionary<string, Tuple<string, int, string>> Exams = new();
     private Dictionary<int, ExamResult> history = new();
 
     private void LoadData()
@@ -154,7 +154,7 @@ else
         using var rdr = cmd.ExecuteReader();
         while (rdr.Read())
         {
-            Exams.Add(rdr.GetString(0), new Tuple<string, int>(rdr.GetString(1), rdr.GetInt32(2)));
+            Exams.Add(rdr.GetString(0), new Tuple<string, int, string>(rdr.GetString(1), rdr.GetInt32(2), rdr.GetString(3)));
         }
     }
 

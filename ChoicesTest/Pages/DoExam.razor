@@ -1,4 +1,4 @@
-﻿@page "/do-exam/{ExamCode}/{ExamName}/{minutes:int}"
+﻿@page "/do-exam/{ExamCode}/{ExamName}/{minutes:int}/{questionLabel}"
 @page "/do-exam/{ExamCode}/{ExamName}"
 @using ChoicesTest.Components;
 @using ChoicesTest.Models;
@@ -16,7 +16,7 @@
 <ul>
     <Virtualize Items="@questions" Context="ques">
         <li style="background-color:@ques.color;">
-            <Question personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+            <Question label="@questionLabel" personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
             </Question>
             <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
             <hr />
@@ -34,6 +34,8 @@
     public string ExamName { get; set; }
     [Parameter]
     public int minutes { get; set; } = 0;
+    [Parameter]
+    public string questionLabel { get; set; } = "Question";
 
     private bool haveQuesions = false;
     private int TimeLeft;

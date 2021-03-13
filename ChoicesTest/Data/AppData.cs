@@ -23,7 +23,7 @@ namespace ChoicesTest.Data
             var myCmd3 = connection.CreateCommand();
             myCmd2.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT, admin INTEGER);";
             myCmd3.CommandText = "CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, exam TEXT, score REAL, time TEXT);";
-            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT PRIMARY KEY, name TEXT, time INTEGER);";
+            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT PRIMARY KEY, name TEXT, time INTEGER, label TEXT);";
             await task;
             myCmd.ExecuteNonQuery();
             myCmd2.ExecuteNonQuery();
