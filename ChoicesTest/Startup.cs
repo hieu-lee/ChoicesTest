@@ -57,6 +57,7 @@ namespace ChoicesTest
             {
                 endpoints.MapBlazorHub();
                 endpoints.MapFallbackToPage("/_Host");
+                endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });
             Task.Run(async () => await Electron.WindowManager.CreateBrowserViewAsync());
             Task.Run(async () => await Electron.WindowManager.CreateWindowAsync());

@@ -31,7 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="exams.db">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 </Project>
