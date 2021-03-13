@@ -1,17 +1,16 @@
 ﻿@page "/log-in"
 @page "/log-in/{register:bool}"
 @using Microsoft.Data.Sqlite;
+@using ChoicesTest.Data;
 @inject IJSRuntime JsRuntime;
 @inject NavigationManager navigationManager;
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-@inject ProtectedSessionStorage sessionStorage;
+@inject AppData appData;
 
 <h1>Welcome to Exam Access</h1>
 @if (loading)
 {
     <p>Loading data...</p>
     <div class="spinner-border text-primary"></div>
-    LoadData();
 }
 else
 {
@@ -52,7 +51,6 @@ else
 @code {
     [Parameter]
     public bool register { get; set; } = false;
-
     private bool admin = false;
     private bool loading = true;
     private bool logged;
@@ -63,42 +61,18 @@ else
     string password = string.Empty;
     private Dictionary<string, Tuple<string, string, int>> Accounts = new();
 
-    private async void LoadData()
-    {
-        try
-        {
-            var result = await sessionStorage.GetAsync<string>("user");
-            if (result.Success)
-            {
-                logged = true;
-            }
-            else
-            {
-                logged = false;
-            }
-        }
-        catch (Exception)
-        {
-            await sessionStorage.DeleteAsync("user");
-            navigationManager.NavigateTo("/home", true);
-        }
-        loading = false;
-        StateHasChanged();
-    }
 
-    protected override Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        SqliteConnectionStringBuilder connectionStringBuilder = new();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new(connectionStringBuilder.ConnectionString);
-        connection.Open();
+        connection = appData.connection;
         GetAccounts();
-        connection.Close();
-        return base.OnInitializedAsync();
+        logged = appData.logged;
+        loading = false;
     }
 
     private void GetAccounts()
     {
+        connection.Open();
         var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT * FROM accounts";
         using var rdr = cmd.ExecuteReader();
@@ -109,6 +83,7 @@ else
                 Accounts.Add(rdr.GetString(0), new Tuple<string, string, int>(rdr.GetString(1), rdr.GetString(2), rdr.GetInt16(3)));
             }
         }
+        connection.Close();
     }
 
     private async void SignIn()
@@ -119,15 +94,12 @@ else
         {
             if (Accounts[username].Item1 == password)
             {
-                await sessionStorage.SetAsync("user", Accounts[username].Item2);
-                await sessionStorage.SetAsync("account", username);
+                appData.user = Accounts[username].Item2;
+                appData.account = username;
+                appData.logged = true;
                 if (Accounts[username].Item3 == 1)
                 {
-                    await sessionStorage.SetAsync("admin", true);
-                }
-                else
-                {
-                    await sessionStorage.SetAsync("admin", false);
+                    appData.admin = true;
                 }
                 await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
                 navigationManager.NavigateTo("/home");
@@ -163,6 +135,7 @@ else
             await JsRuntime.InvokeAsync<object>("alert", "The password must have at least 6 characters and not contain any whitespace");
             return;
         }
+        GetAccounts();
         if (!Accounts.ContainsKey(username))
         {
             var name = $"{fname} {lname}";
@@ -181,12 +154,12 @@ else
             await task;
             myCmd.ExecuteNonQuery();
             myCmd2.ExecuteNonQuery();
-            GetAccounts();
             connection.Close();
-            await sessionStorage.SetAsync("admin", admin);
+            appData.admin = admin;
             admin = false;
-            await sessionStorage.SetAsync("user", name);
-            await sessionStorage.SetAsync("account", username);
+            appData.user = name;
+            appData.account = username;
+            appData.logged = true;
             await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
             navigationManager.NavigateTo("/home");
         }
@@ -199,11 +172,12 @@ else
 
     private async void SignOut()
     {
-        await sessionStorage.DeleteAsync("user");
-        await sessionStorage.DeleteAsync("account");
-        await sessionStorage.SetAsync("admin", false);
+        appData.user = string.Empty;
+        appData.account = string.Empty;
+        appData.admin = false;
+        appData.logged = false;
         await JsRuntime.InvokeAsync<object>("alert", "Successfully logged out!");
-        loading = true;
+        logged = false;
         StateHasChanged();
     }
 }

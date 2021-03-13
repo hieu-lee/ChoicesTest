@@ -1,17 +1,16 @@
 ﻿@page "/history"
 @using Microsoft.Data.Sqlite;
 @using ChoicesTest.Models;
+@using ChoicesTest.Data; 
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-@inject ProtectedSessionStorage sessionStorage;
+@inject AppData appData;
 
 <h1>Welcome @user to Exam Access</h1>
 @if (loading)
 {
     <p>Loading data...</p>
     <div class="spinner-border text-primary"></div>
-    LoadData();
 }
 else
 {
@@ -60,58 +59,17 @@ else
     private string user;
     private string account;
 
-    private async Task LoadAccountAsync()
+    private void LoadData()
     {
-        try
-        {
-            var result = await sessionStorage.GetAsync<string>("account");
-            if (result.Success)
-            {
-                account = result.Value;
-                StateHasChanged();
-            }
-        }
-        catch (Exception)
-        {
-            account = string.Empty;
-            user = string.Empty;
-            await sessionStorage.DeleteAsync("user");
-            await sessionStorage.DeleteAsync("account");
-            await sessionStorage.SetAsync("admin", false);
-        }
+        user = appData.user;
+        admin = appData.admin;
+        account = appData.account;
         loading = false;
-        StateHasChanged();
-    }
-
-    private async void LoadData()
-    {
-        try
-        {
-            var task = LoadAccountAsync();
-            var result = await sessionStorage.GetAsync<string>("user");
-            var result1 = await sessionStorage.GetAsync<bool>("admin");
-            if (result.Success && result1.Success)
-            {
-                user = result.Value;
-                admin = result1.Value;
-                await task;
-                StateHasChanged();
-            }
-        }
-        catch (Exception)
-        {
-            account = string.Empty;
-            user = string.Empty;
-            await sessionStorage.DeleteAsync("user");
-            await sessionStorage.DeleteAsync("account");
-            await sessionStorage.SetAsync("admin", false);
-        }
-        loading = false;
-        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
     {
+        var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
         history = new();
         var connectionStringBuilder = new SqliteConnectionStringBuilder();
         connectionStringBuilder.DataSource = "exams.db";
@@ -126,5 +84,6 @@ else
             history.Add(new ExamResult() { username = rdr.GetString(1), examCode = rdr.GetString(2), score = rdr.GetDecimal(3), time = rdr.GetString(4) });
         }
         connection.Close();
+        await taskLoadData;
     }
 }

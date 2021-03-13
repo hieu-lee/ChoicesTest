@@ -4,17 +4,16 @@
 @page "/{DoExam:bool}"
 @using Microsoft.Data.Sqlite;
 @using ChoicesTest.Models;
+@using ChoicesTest.Data;
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-@inject ProtectedSessionStorage sessionStorage;
+@inject AppData appData;
 
 <h1>Welcome @user to Exam Access</h1>
 @if (loading)
 {
     <p>Loading data...</p>
     <div class="spinner-border text-primary"></div>
-    LoadData();
 }
 else
 {
@@ -93,7 +92,6 @@ else
     public bool DoExam { get; set; } = false;
     [Parameter]
     public string RemovedExam { get; set; } = null;
-
     private bool admin = false;
     private string user = string.Empty;
     private string account = string.Empty;
@@ -103,81 +101,50 @@ else
     private Dictionary<string, Tuple<string, int>> Exams = new();
     private Dictionary<int, ExamResult> history = new();
 
-    private async Task LoadAccountAsync()
+    private void LoadData()
     {
-        try
-        {
-            var result = await sessionStorage.GetAsync<string>("account");
-            if (result.Success)
-            {
-                account = result.Value;
-                StateHasChanged();
-            }
-        }
-        catch (Exception)
-        {
-            account = string.Empty;
-            user = string.Empty;
-            await sessionStorage.DeleteAsync("user");
-            await sessionStorage.DeleteAsync("account");
-            await sessionStorage.SetAsync("admin", false);
-        }
+        user = appData.user;
+        admin = appData.admin;
+        account = appData.account;
         loading = false;
-        StateHasChanged();
-    }
-
-    private async void LoadData()
-    {
-        try
-        {
-            var task = LoadAccountAsync();
-            var result = await sessionStorage.GetAsync<string>("user");
-            var result1 = await sessionStorage.GetAsync<bool>("admin");
-            if (result.Success && result1.Success)
-            {
-                user = result.Value;
-                admin = result1.Value;
-                await task;
-                StateHasChanged();
-            }
-        }
-        catch (Exception)
-        {
-            account = string.Empty;
-            user = string.Empty;
-            await sessionStorage.DeleteAsync("user");
-            await sessionStorage.DeleteAsync("account");
-            await sessionStorage.SetAsync("admin", false);
-        }
-        loading = false;
-        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        var myCmd2 = connection.CreateCommand();
-        var myCmd3 = connection.CreateCommand();
-        myCmd2.CommandText = "CREATE TABLE IF NOT EXISTS accounts(username TEXT PRIMARY KEY, password TEXT, name TEXT, admin INTEGER);";
-        myCmd3.CommandText = "CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, exam TEXT, score REAL, time TEXT);";
-        if (RemovedExam is not null)
+        if (!appData.inited)
         {
-            myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
+            var task1 = appData.InitializeAsync();
+            var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
+            connection = appData.connection;
+            connection.Open();
+            if (RemovedExam is not null)
+            {
+                var myCmd = connection.CreateCommand();
+                myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
+                myCmd.ExecuteNonQuery();
+            }
+            GetTables();
+            connection.Close();
+            await task1;
+            await taskLoadData;
         }
         else
         {
-            myCmd.CommandText = "CREATE TABLE IF NOT EXISTS exam_collection(code TEXT PRIMARY KEY, name TEXT, time INTEGER);";
+            var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
+            connection = appData.connection;
+            connection.Open();
+            if (RemovedExam is not null)
+            {
+                var task = connection.OpenAsync();
+                var myCmd = connection.CreateCommand();
+                myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
+                await task;
+                myCmd.ExecuteNonQuery();
+            }
+            GetTables();
+            connection.Close();
+            await taskLoadData;
         }
-        await task;
-        myCmd.ExecuteNonQuery();
-        myCmd2.ExecuteNonQuery();
-        myCmd3.ExecuteNonQuery();
-        GetTables();
-        connection.Close();
     }
 
     private void GetTables()

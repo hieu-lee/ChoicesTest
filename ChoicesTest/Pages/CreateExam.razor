@@ -3,7 +3,8 @@
 @using ChoicesTest.Models;
 @using ChoicesTest.Components;
 @using Microsoft.Data.Sqlite;
-@inject IMatDialogService MatDialogService
+@using ChoicesTest.Data;
+@inject AppData appData
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
 
@@ -79,9 +80,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
+        connection = appData.connection;
         if (TitleSeted)
         {
             await LoadQuestion();
