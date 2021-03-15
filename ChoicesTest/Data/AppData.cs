@@ -10,7 +10,7 @@ namespace ChoicesTest.Data
 {
     public class AppData
     {
-        public MongoClient client = new("mongodb+srv://hieule:plh0801@cluster0.n2h9d.mongodb.net/examsdb?retryWrites=true&w=majority");
+        public MongoClient client = new("");
         public IMongoDatabase examdb;
         public IMongoCollection<Account> accounts;
         public IMongoCollection<Record> history;
