@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ElectronNET.API;
 using MatBlazor;
 using ChoicesTest.Data;
 
@@ -31,7 +30,7 @@ namespace ChoicesTest
             services.AddSingleton<AppData>();
             services.AddMatBlazor();
             services.AddRazorPages();
-            services.AddServerSideBlazor();
+            services.AddServerSideBlazor().AddCircuitOptions(options => { options.DetailedErrors = true; });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -59,8 +58,8 @@ namespace ChoicesTest
                 endpoints.MapFallbackToPage("/_Host");
                 endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });
-            Task.Run(async () => await Electron.WindowManager.CreateBrowserViewAsync());
-            Task.Run(async () => await Electron.WindowManager.CreateWindowAsync());
+            //Task.Run(async () => await Electron.WindowManager.CreateBrowserViewAsync());
+            //Task.Run(async () => await Electron.WindowManager.CreateWindowAsync());
         }
     }
 }

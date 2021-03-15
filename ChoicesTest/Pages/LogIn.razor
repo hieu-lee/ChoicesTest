@@ -1,10 +1,14 @@
 ﻿@page "/log-in"
 @page "/log-in/{register:bool}"
-@using Microsoft.Data.Sqlite;
+@using ChoicesTest.Models;
 @using ChoicesTest.Data;
+@using MongoDB.Driver;
+@using System.Threading;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @inject IJSRuntime JsRuntime;
 @inject NavigationManager navigationManager;
 @inject AppData appData;
+@inject ProtectedLocalStorage localStorage;
 
 <h1>Welcome to Exam Access</h1>
 @if (loading)
@@ -51,58 +55,86 @@ else
 @code {
     [Parameter]
     public bool register { get; set; } = false;
+
+    private Thread t;
     private bool admin = false;
     private bool loading = true;
     private bool logged;
-    private SqliteConnection connection;
     private string fname = string.Empty;
     private string lname = string.Empty;
     private string username = string.Empty;
     string password = string.Empty;
-    private Dictionary<string, Tuple<string, string, int>> Accounts = new();
+    private Dictionary<string, Tuple<string, string, bool>> Accounts = new();
 
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        connection = appData.connection;
-        GetAccounts();
-        logged = appData.logged;
+        t = new(GetAccounts);
+        t.Start();
+        try
+        {
+            var res = await localStorage.GetAsync<bool>("logged");
+            if (res.Success)
+            {
+                logged = res.Value;
+            }
+            else
+            {
+                logged = false;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
         loading = false;
         StateHasChanged();
     }
 
     private void GetAccounts()
     {
-        connection.Open();
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM accounts";
-        using var rdr = cmd.ExecuteReader();
-        while (rdr.Read())
+        var accountlist = appData.accounts.Find(s => true).ToList();
+        Parallel.ForEach(accountlist, acc =>
         {
-            if (!Accounts.ContainsKey(rdr.GetString(0)))
+            if (!Accounts.ContainsKey(acc.username))
             {
-                Accounts.Add(rdr.GetString(0), new Tuple<string, string, int>(rdr.GetString(1), rdr.GetString(2), rdr.GetInt16(3)));
+                Accounts.Add(acc.username, new Tuple<string, string, bool>(acc.password, acc.name, acc.admin));
             }
-        }
-        connection.Close();
+        });
+        //connection.Open();
+        //var cmd = connection.CreateCommand();
+        //cmd.CommandText = "SELECT * FROM accounts";
+        //using var rdr = cmd.ExecuteReader();
+        //while (rdr.Read())
+        //{
+        //    if (!Accounts.ContainsKey(rdr.GetString(0)))
+        //    {
+        //        Accounts.Add(rdr.GetString(0), new Tuple<string, string, int>(rdr.GetString(1), rdr.GetString(2), rdr.GetInt16(3)));
+        //    }
+        //}
+        //connection.Close();
     }
 
     private async void SignIn()
     {
+        t.Join();
+        t = null;
         username = username.Trim();
         password = password.Trim();
         if (Accounts.ContainsKey(username))
         {
             if (Accounts[username].Item1 == password)
             {
-                appData.user = Accounts[username].Item2;
-                appData.account = username;
-                appData.logged = true;
-                if (Accounts[username].Item3 == 1)
-                {
-                    appData.admin = true;
-                }
+
+                var task = localStorage.SetAsync("user", Accounts[username].Item2);
+                var task1 = localStorage.SetAsync("account", username);
+                var task2 = localStorage.SetAsync("logged", true);
+                var task3 = localStorage.SetAsync("admin", Accounts[username].Item3);
                 await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in!");
+                await task;
+                await task1;
+                await task2;
+                await task3;
                 navigationManager.NavigateTo("/home");
                 return;
             }
@@ -121,6 +153,8 @@ else
 
     private async void SignUp()
     {
+        t = new(GetAccounts);
+        t.Start();
         if (string.IsNullOrWhiteSpace(fname) || string.IsNullOrWhiteSpace(lname) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             await JsRuntime.InvokeAsync<object>("alert", "Please fill in all the information!");
@@ -136,32 +170,40 @@ else
             await JsRuntime.InvokeAsync<object>("alert", "The password must have at least 6 characters and not contain any whitespace");
             return;
         }
-        GetAccounts();
+        t.Join();
         if (!Accounts.ContainsKey(username))
         {
             var name = $"{fname} {lname}";
-            var task = connection.OpenAsync();
-            var myCmd = connection.CreateCommand();
-            if (admin)
-            {
-                myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 1)";
-            }
-            else
-            {
-                myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 0)";
-            }
-            var myCmd2 = connection.CreateCommand();
-            myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
-            await task;
-            myCmd.ExecuteNonQuery();
-            myCmd2.ExecuteNonQuery();
-            connection.Close();
-            appData.admin = admin;
+            var myacc = new Account() { username = username, password = password, name = name, admin = admin };
+            var task = appData.accounts.InsertOneAsync(myacc);
+            var task2 = appData.examdb.CreateCollectionAsync(username);
+            //var task = connection.OpenAsync();
+            //var myCmd = connection.CreateCommand();
+            //if (admin)
+            //{
+            //    myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 1)";
+            //}
+            //else
+            //{
+            //    myCmd.CommandText = $"INSERT INTO accounts(username, password, name, admin) VALUES('{username}', '{password}', '{name}', 0)";
+            //}
+            //var myCmd2 = connection.CreateCommand();
+            //myCmd2.CommandText = $"CREATE TABLE {username}(id INTEGER PRIMARY KEY AUTOINCREMENT, exam TEXT, score REAL, time TEXT)";
+            //await task;
+            //myCmd.ExecuteNonQuery();
+            //myCmd2.ExecuteNonQuery();
+            //connection.Close();
+            await localStorage.SetAsync("admin", admin);
             admin = false;
-            appData.user = name;
-            appData.account = username;
-            appData.logged = true;
+            var task3 = localStorage.SetAsync("user", name);
+            var task4 = localStorage.SetAsync("account", username);
+            var task5 = localStorage.SetAsync("logged", true);
             await JsRuntime.InvokeAsync<object>("alert", "Successfully logged in with your new account!");
+            await task3;
+            await task4;
+            await task5;
+            await task;
+            await task2;
             navigationManager.NavigateTo("/home");
         }
         else
@@ -173,11 +215,15 @@ else
 
     private async void SignOut()
     {
-        appData.user = string.Empty;
-        appData.account = string.Empty;
-        appData.admin = false;
-        appData.logged = false;
+        var task = localStorage.SetAsync("user", string.Empty);
+        var task1 = localStorage.SetAsync("account", string.Empty);
+        var task2 = localStorage.SetAsync("admin", false);
+        var task3 = localStorage.SetAsync("logged", false);
         await JsRuntime.InvokeAsync<object>("alert", "Successfully logged out!");
+        await task;
+        await task1;
+        await task2;
+        await task3;
         logged = false;
         StateHasChanged();
     }

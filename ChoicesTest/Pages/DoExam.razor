@@ -1,33 +1,49 @@
-﻿@page "/do-exam/{ExamCode}/{ExamName}/{minutes:int}/{questionLabel}"
+﻿@page "/do-exam/{ExamCode}/{ExamName}/{questionLabel}"
 @page "/do-exam/{ExamCode}/{ExamName}"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @using ChoicesTest.Components;
 @using ChoicesTest.Models;
-@using Microsoft.Data.Sqlite;
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @using System.Timers;
 @using ChoicesTest.Data;
+@using MongoDB.Driver;
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
-@inject ProtectedSessionStorage sessionStorage
 @inject AppData appData
+@inject ProtectedLocalStorage localStorage
 
-<div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface" style="padding: 10px; margin-bottom: 20px;">
-    <h1>@ExamName</h1>
-    <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
-    <ul>
-        <Virtualize Items="@questions" Context="ques">
-            <li style="background-color:@ques.color;">
-                <Question label="@questionLabel" personalWork="@personalWork" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
-                </Question>
-                <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
-            </li>
-        </Virtualize>
-    </ul>
-    <div class="button-holder">
-        <MatButton Unelevated="true" @onclick="ShowScore">Submit</MatButton>
-    </div>
-</div>
 
+@if (loading)
+{
+    <p>Loading data...</p>
+    <MatProgressCircle Indeterminate="true" Size="MatProgressCircleSize.Medium" />
+}
+else
+{
+    if (verify)
+    {
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface" style="padding: 10px; margin-bottom: 20px;">
+            <h1>@ExamName</h1>
+            <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
+            <ul>
+                <Virtualize Items="@questions" Context="ques">
+                    <li style="background-color:@ques.color;">
+                        <Question label="@questionLabel" personalWork="@personalWork" number="@ques.id" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+                        </Question>
+                        <div style="color:white; display:@ques.answerDisplay; margin-top: 5px;">Correct answer: @ques.answer</div>
+                    </li>
+                </Virtualize>
+            </ul>
+            <div class="button-holder">
+                <MatButton Unelevated="true" @onclick="ShowScore">Submit</MatButton>
+            </div>
+        </div>
+    }
+    else
+    {
+        <h1>Welcome to Exam Access</h1>
+        <h4>You have to log in to do exam</h4>
+    }
+}
 
 
 @code {
@@ -36,10 +52,14 @@
     [Parameter]
     public string ExamName { get; set; }
     [Parameter]
-    public int minutes { get; set; } = 0;
-    [Parameter]
     public string questionLabel { get; set; } = "Question";
 
+    private bool admin = false;
+    private bool loading = true;
+    private IMongoCollection<QuestionInfo> myExamDb;
+    private IMongoCollection<ExamResult> myUserDb;
+    private int minutes;
+    private bool verify = false;
     private bool Privacy = false;
     private bool haveQuesions = false;
     private int TimeLeft;
@@ -47,10 +67,9 @@
     private string TimeDisplay = "none";
     private string user;
     private List<string> colors = new();
-    public Dictionary<int, char> personalWork = new Dictionary<int, char>();
-    private Dictionary<int, char> solutionKey = new Dictionary<int, char>();
+    public Dictionary<int, string> personalWork = new();
+    private Dictionary<int, string> solutionKey = new();
     private List<QuestionInfo> questions = new List<QuestionInfo>();
-    private SqliteConnection connection;
     private bool submitted = false;
 
     private async void CountDown(Object source, System.Timers.ElapsedEventArgs e)
@@ -79,46 +98,63 @@
 
     protected override async Task OnInitializedAsync()
     {
-        submitted = false;
-        await LoadExam();
-        Privacy = await appData.GetExamPrivacyAsync(ExamCode);
-        if (minutes > 0)
-        {
-            StartTimer();
-        }
-    }
-
-    private void LoadUser()
-    {
-        user = appData.account;
-    }
-
-    private async Task LoadExam()
-    {
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        await task;
+        bool logged = false;
         try
         {
-            myCmd.CommandText = $"SELECT * FROM {ExamCode}";
-            using var rdr = myCmd.ExecuteReader();
-            while (rdr.Read())
+            var res = await localStorage.GetAsync<bool>("logged");
+            var res1 = await localStorage.GetAsync<bool>("admin");
+            var res2 = await localStorage.GetAsync<string>("account");
+            if (res.Success && res1.Success && res2.Success)
             {
-                solutionKey.Add(rdr.GetInt32(0), rdr.GetChar(6));
-                questions.Add(new QuestionInfo() { number = rdr.GetInt32(0), question = rdr.GetString(1), answerA = rdr.GetString(2), answerB = rdr.GetString(3), answerC = rdr.GetString(4), answerD = rdr.GetString(5), answer = rdr.GetString(6) });
-                haveQuesions = true;
+                logged = res.Value;
+                verify = logged;
+                loading = false;
+                admin = res1.Value;
+                user = res2.Value;
+                StateHasChanged();
+            }
+            else
+            {
+                loading = false;
             }
         }
-        catch (Exception) { };
-        connection.Close();
-        if (minutes > 0)
+        catch (InvalidOperationException)
         {
-            TimeDisplay = "block";
-            StateHasChanged();
+            return;
         }
+        submitted = false;
+        if (logged)
+        {
+            verify = true;
+            var task = appData.GetExamPrivacyAndTimeAsync(ExamCode);
+            LoadExam();
+            var info = await task;
+            minutes = info.Item1;
+            Privacy = info.Item2;
+            if (minutes > 0)
+            {
+                TimeDisplay = "block";
+                StartTimer();
+            }
+        }
+
+    }
+
+    private void LoadExam()
+    {
+        myExamDb = appData.examdb.GetCollection<QuestionInfo>(ExamCode);
+        var questionCollection = myExamDb.Find(s => true);
+        questions = questionCollection.ToList();
+        Parallel.ForEach(questions, ques =>
+        {
+            if (!solutionKey.ContainsKey(ques.id))
+            {
+                haveQuesions = true;
+                solutionKey.Add(ques.id, ques.answer);
+            }
+        });
+        StateHasChanged();
+        myUserDb = appData.examdb.GetCollection<ExamResult>(user);
     }
 
     private async void ShowScore()
@@ -134,7 +170,6 @@
         submitted = true;
         if (haveQuesions)
         {
-            LoadUser();
             var score = 0;
             var max = 0;
             if (!Privacy)
@@ -183,17 +218,31 @@
             percent *= 100.0;
             var res = Math.Round(percent, 2);
             var task2 = JsRuntime.InvokeAsync<object>("alert", $"You got {score.ToString()}/{max.ToString()} answers correct, and a result of {res.ToString()}%");
-            var task3 = connection.OpenAsync();
-            var myCmd = connection.CreateCommand();
-            var myCmd1 = connection.CreateCommand();
-            myCmd.CommandText = $"INSERT INTO {user}(exam, score, time) VALUES('{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
-            myCmd1.CommandText = $"INSERT INTO history(username, exam, score, time) VALUES('{user}', '{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
-            await task3;
-            myCmd.ExecuteNonQuery();
-            myCmd1.ExecuteNonQuery();
-            connection.Close();
+            var localrecord = new ExamResult() { examCode = ExamCode, score = res, time = DateTime.Now.ToString() };
+            var universalrecord = new Record() { username = user, examCode = ExamCode, score = res, time = DateTime.Now.ToString() };
+            List<Task> tasks = new();
+            if (!admin)
+            {
+                var task3 = myUserDb.InsertOneAsync(localrecord);
+                tasks.Add(task3);
+            }
+            var task4 = appData.history.InsertOneAsync(universalrecord);
+            tasks.Add(task4);
+            //var task3 = connection.OpenAsync();
+            //var myCmd = connection.CreateCommand();
+            //var myCmd1 = connection.CreateCommand();
+            //myCmd.CommandText = $"INSERT INTO {user}(exam, score, time) VALUES('{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
+            //myCmd1.CommandText = $"INSERT INTO history(username, exam, score, time) VALUES('{user}', '{ExamCode}', {res}, '{DateTime.Now.ToString()}')";
+            //await task3;
+            //myCmd.ExecuteNonQuery();
+            //myCmd1.ExecuteNonQuery();
+            //connection.Close();
             StateHasChanged();
             await task2;
+            foreach (var t in tasks)
+            {
+                await t;
+            }
         }
         else
         {

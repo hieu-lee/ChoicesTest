@@ -1,7 +1,9 @@
 ﻿@page "/history"
-@using Microsoft.Data.Sqlite;
+@using MongoDB.Driver;
 @using ChoicesTest.Models;
-@using ChoicesTest.Data; 
+@using ChoicesTest.Data;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@inject ProtectedLocalStorage localStorage;
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
 @inject AppData appData;
@@ -54,38 +56,40 @@ else
 
 
 @code {
-    private List<ExamResult> history = new();
-    private SqliteConnection connection;
+    private List<Record> history = new();
     private bool loading = true;
     private bool admin;
     private string user;
     private string account;
 
-    private void LoadData()
+    private async void LoadData()
     {
-        user = appData.user;
-        admin = appData.admin;
-        account = appData.account;
-        loading = false;
+        var resuser = await localStorage.GetAsync<string>("user");
+        var resadmin = await localStorage.GetAsync<bool>("admin");
+        var resaccount = await localStorage.GetAsync<string>("account");
+        if (resuser.Success && resadmin.Success && resaccount.Success)
+        {
+            user = resuser.Value;
+            admin = resadmin.Value;
+            loading = false;
+            StateHasChanged();
+            account = resaccount.Value;
+        }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
-        history = new();
-        var connectionStringBuilder = new SqliteConnectionStringBuilder();
-        connectionStringBuilder.DataSource = "exams.db";
-        connection = new SqliteConnection(connectionStringBuilder.ConnectionString);
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        myCmd.CommandText = $"SELECT * FROM history ORDER BY score DESC";
-        await task;
-        using var rdr = myCmd.ExecuteReader();
-        while (rdr.Read())
+        var task = appData.history.Find(s => true).ToListAsync();
+        try
         {
-            history.Add(new ExamResult() { username = rdr.GetString(1), examCode = rdr.GetString(2), score = rdr.GetDecimal(3), time = rdr.GetString(4) });
+            LoadData();
         }
-        connection.Close();
-        await taskLoadData;
+        catch (InvalidOperationException)
+        {
+            task.Dispose();
+            return;
+        }
+        history = await task;
+        history.Sort((a, b) => b.CompareTo(a));
     }
 }

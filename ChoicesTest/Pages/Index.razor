@@ -2,9 +2,12 @@
 @page "/home"
 @page "/removed/{RemovedExam}"
 @page "/{DoExam:bool}"
-@using Microsoft.Data.Sqlite;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+@using MongoDB.Driver;
 @using ChoicesTest.Models;
 @using ChoicesTest.Data;
+@using System.Threading;
+@inject ProtectedLocalStorage localStorage;
 @inject NavigationManager navigationManager;
 @inject IJSRuntime JsRuntime;
 @inject AppData appData;
@@ -34,7 +37,7 @@ else
                 {
                     <ul style="max-height:450px;overflow-y:scroll">
                         <Virtualize Items="@Exams.Keys" Context="name">
-                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item2.ToString()/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
+                            <li><a href="/exam-create/@name/true/@Exams[name].Item1/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                         </Virtualize>
                     </ul>
                 }
@@ -51,11 +54,10 @@ else
                     However, in order to be able to create exams, you have to log in as admin.<br />
                     If you are not the admin, you are only able to do exams.
                 </p>
-                GetHistory();
                 <h6>This is your history of doing:</h6>
                 <ul style="max-height:375px;overflow-y:scroll">
-                    <Virtualize Items="@history.Keys" Context="result">
-                        <li><img src="document.png" />Exam: @history[result].examCode<br />Score: @history[result].score.ToString()% at @history[result].time<hr /></li>                   
+                    <Virtualize Items="@history" Context="result">
+                        <li><img src="document.png" />Exam: @result.examCode<br />Score: @result.score.ToString()% at @result.time<hr /></li>
                     </Virtualize>
                 </ul>
             }
@@ -72,7 +74,7 @@ else
             {
                 <ul style="max-height:450px;overflow-y:scroll">
                     <Virtualize Items="@Exams.Keys" Context="name">
-                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item2.ToString()/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
+                        <li><a href="/do-exam/@name/@Exams[name].Item1/@Exams[name].Item3"><img src="document.png" /></a><p>Code: @name<br />Name: @Exams[name].Item1<br />Time limit: @Exams[name].Item2.ToString() minute(s)</p></li>
                     </Virtualize>
                 </ul>
             }
@@ -91,89 +93,116 @@ else
     public bool DoExam { get; set; } = false;
     [Parameter]
     public string RemovedExam { get; set; } = null;
+
+    private IMongoCollection<ExamResult> myUserDb;
     private bool admin = false;
     private string user = string.Empty;
     private string account = string.Empty;
     private string NewExamCode;
-    private SqliteConnection connection;
     private bool loading = true;
     private Dictionary<string, Tuple<string, int, string>> Exams = new();
-    private Dictionary<int, ExamResult> history = new();
+    private List<ExamResult> history = new();
 
-    private void LoadData()
+    private async void LoadData()
     {
-        user = appData.user;
-        admin = appData.admin;
-        account = appData.account;
-        loading = false;
+        var resuser = await localStorage.GetAsync<string>("user");
+        var resadmin = await localStorage.GetAsync<bool>("admin");
+        var resaccount = await localStorage.GetAsync<string>("account");
+        if (resuser.Success && resadmin.Success && resaccount.Success)
+        {
+            admin = resadmin.Value;
+            user = resuser.Value;
+            loading = false;
+            StateHasChanged();
+            account = resaccount.Value;
+        }
+        else
+        {
+            loading = false;
+            StateHasChanged();
+            await localStorage.SetAsync("user", string.Empty);
+            await localStorage.SetAsync("account", string.Empty);
+            await localStorage.SetAsync("admin", false);
+            await localStorage.SetAsync("logged", false);
+        }
+        if (!string.IsNullOrWhiteSpace(account))
+        {
+            myUserDb = appData.examdb.GetCollection<ExamResult>(account);
+        }
+        if (!admin)
+        {
+            if (myUserDb is not null)
+            {
+                GetHistory();
+                StateHasChanged();
+            }
+        }
     }
 
     protected override async Task OnInitializedAsync()
     {
         if (!appData.inited)
         {
-            var task1 = appData.InitializeAsync();
-            var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
-            connection = appData.connection;
-            connection.Open();
-            if (RemovedExam is not null)
+            appData.Initialize();
+            var task = Task.Factory.StartNew(() => GetTables());
+            try
             {
-                var myCmd = connection.CreateCommand();
-                myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
-                myCmd.ExecuteNonQuery();
+                LoadData();
             }
-            GetTables();
-            connection.Close();
-            await task1;
-            await taskLoadData;
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(RemovedExam))
+            {
+                Exams.Remove(RemovedExam);
+                var filter = Builders<Exam>.Filter.Eq("_id", RemovedExam);
+                appData.exams.DeleteOne(filter);
+            }
+            //connection.Close();
+            await task;
         }
         else
         {
-            var taskLoadData = Task.Factory.StartNew(() => { LoadData(); });
-            connection = appData.connection;
-            connection.Open();
+            var task = Task.Factory.StartNew(() => GetTables());
+            try
+            {
+                LoadData();
+            }
+            catch(InvalidOperationException)
+            {
+                return;
+            }
+            //connection = appData.connection;
+            //connection.Open();
             if (RemovedExam is not null)
             {
-                var task = connection.OpenAsync();
-                var myCmd = connection.CreateCommand();
-                myCmd.CommandText = $"DELETE FROM exam_collection WHERE code = '{RemovedExam}';";
-                await task;
-                myCmd.ExecuteNonQuery();
+                var filter = Builders<Exam>.Filter.Eq("_id", RemovedExam);
+                appData.exams.DeleteOne(filter);
             }
-            GetTables();
-            connection.Close();
-            await taskLoadData;
+            //connection.Close();
+            await task;
         }
     }
 
     private void GetTables()
     {
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM exam_collection";
-        using var rdr = cmd.ExecuteReader();
-        while (rdr.Read())
+        var examlist = appData.GetExams();
+        Parallel.ForEach(examlist, exam =>
         {
-            Exams.Add(rdr.GetString(0), new Tuple<string, int, string>(rdr.GetString(1), rdr.GetInt32(2), rdr.GetString(3)));
-        }
+            Exams.Add(exam.code, new Tuple<string, int, string>(exam.name, exam.time, exam.label));
+        });
     }
 
-    private async void GetHistory()
+    private void GetHistory()
     {
-        history = new();
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
-        myCmd.CommandText = $"SELECT * FROM {account} ORDER BY score DESC";
-        await task;
-        using var rdr = myCmd.ExecuteReader();
-        while (rdr.Read())
+        history = myUserDb.Find(s => true).ToList();
+        if (history.Count > 0)
         {
-            var id = rdr.GetInt32(0);
-            if (!history.ContainsKey(id))
-            {
-                history.Add(rdr.GetInt32(0), new ExamResult() { examCode = rdr.GetString(1), score = rdr.GetDecimal(2), time = rdr.GetString(3) });
-            }
+            history.Sort((a, b) => b.CompareTo(a));
+            return;
         }
-        connection.Close();
+        StateHasChanged();
     }
 
     private async void CreateNewExam()
@@ -185,7 +214,7 @@ else
         }
         else
         {
-            if (NewExamCode.Contains('\''))
+            if (NewExamCode.Contains('?') || NewExamCode.Contains('/') || NewExamCode.Contains('\\') || NewExamCode.Contains('@') || NewExamCode.Contains('$'))
             {
                 await JsRuntime.InvokeAsync<object>("alert", "The examcode cannot contain any special characters");
                 return;

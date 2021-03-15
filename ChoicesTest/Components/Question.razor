@@ -6,10 +6,10 @@
     </div>
     
     <div>
-        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'A'; }" type="radio" value="A" /> @answerA</div>
-        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'B'; }" type="radio" value="B" /> @answerB</div>
-        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'C'; }" type="radio" value="C" /> @answerC</div>
-        <div><input name="@number.ToString()-choice" @onclick="() => { if (personalWork is not null) personalWork[number] = 'D'; }" type="radio" value="D" /> @answerD</div>
+        <div><input name="@number.ToString()-choice" @onclick=@(() => { if (personalWork is not null) personalWork[number] = "A"; } ) type="radio" value="A" /> @answerA</div>
+        <div><input name="@number.ToString()-choice" @onclick=@(() => { if (personalWork is not null) personalWork[number] = "B"; } ) type="radio" value="B" /> @answerB</div>
+        <div><input name="@number.ToString()-choice" @onclick=@(() => { if (personalWork is not null) personalWork[number] = "C"; } ) type="radio" value="C" /> @answerC</div>
+        <div><input name="@number.ToString()-choice" @onclick=@(() => { if (personalWork is not null) personalWork[number] = "D"; } ) type="radio" value="D" /> @answerD</div>
     </div>
 </div>
 
@@ -17,7 +17,7 @@
 
 @code {
     [Parameter]
-    public Dictionary<int, char> personalWork { get; set; } = null;
+    public Dictionary<int, string> personalWork { get; set; } = null;
     [Parameter]
     public List<QuestionInfo> questions { get; set; }
     [Parameter]

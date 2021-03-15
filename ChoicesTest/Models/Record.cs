@@ -7,10 +7,13 @@ using System.Threading.Tasks;
 
 namespace ChoicesTest.Models
 {
-    public class ExamResult : IComparable<ExamResult>
+    public class Record : IComparable<Record>
     {
         [BsonId]
         private ObjectId Id;
+
+        [BsonElement("username")]
+        public string username { get; set; }
 
         [BsonElement("examcode")]
         public string examCode { get; set; }
@@ -21,7 +24,7 @@ namespace ChoicesTest.Models
         [BsonElement("time")]
         public string time { get; set; }
 
-        public int CompareTo(ExamResult other)
+        public int CompareTo(Record other)
         {
             return score.CompareTo(other.score);
         }

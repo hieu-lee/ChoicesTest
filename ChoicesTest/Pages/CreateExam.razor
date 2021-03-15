@@ -1,64 +1,90 @@
 ﻿@page "/exam-create/{ExamName}"
-@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}/{minutes:int}/{questionLabel}"
+@page "/exam-create/{ExamName}/{TitleSeted:bool}/{Title}/{questionLabel}"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 @using ChoicesTest.Models;
 @using ChoicesTest.Components;
 @using Microsoft.Data.Sqlite;
 @using ChoicesTest.Data;
+@using MongoDB.Driver;
 @inject AppData appData
 @inject IJSRuntime JsRuntime
 @inject NavigationManager navigationManager
+@inject ProtectedLocalStorage localStorage
 
-
-@if (!TitleSeted)
+@if (loading)
 {
-    <h3>Set title for your new exam</h3>
-    <MatTextField @bind-Value="Title" Label="Title" Required="true"></MatTextField>
-    <br />
-    <MatButton Unelevated="true" @onclick="SetTitle">Confirm</MatButton>
+    <p>Loading data...</p>
+    <MatProgressCircle Indeterminate="true" Size="MatProgressCircleSize.Medium" />
+}
+else
+{
+    if (verify)
+    {
+        if (!TitleSeted)
+        {
+            <h3>Set title for your new exam</h3>
+            <MatTextField @bind-Value="Title" Label="Title" Required="true"></MatTextField>
+            <br />
+            <MatButton Unelevated="true" @onclick="SetTitle">Confirm</MatButton>
+        }
+
+
+        if (TitleSeted)
+        {
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface">
+                <h1>@Title</h1>
+                <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
+                <ul style="margin: 0 10px;">
+                    <Virtualize Items="questions" Context="ques">
+                        <li>
+                            <Question label="@questionLabel" number="@ques.id" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
+                            </Question>
+                        </li>
+                    </Virtualize>
+                </ul>
+            </div>
+            <MatTabGroup>
+                <MatTab Label="New Question">
+                    <div style="margin: 15px 0;">
+                        <MatTextField @bind-Value="NewTitle" Label="Question Content" TextArea="true" Style="width:478px; resize:vertical; height: 55px"></MatTextField>
+                        <div class="new-answers" style="margin-top: 10px;">
+                            <MatRadioGroup @bind-Value="@Answer" TValue="string">
+                                <MatRadioButton Value="@("A")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerA" TextArea="true" Label="Answer A" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                                <MatRadioButton Value="@("B")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerB" TextArea="true" Label="Answer B" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                                <MatRadioButton Value="@("C")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerC" TextArea="true" Label="Answer C" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                                <MatRadioButton Value="@("D")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerD" TextArea="true" Label="Answer D" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
+                            </MatRadioGroup>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:20px; margin-top: 10px;">
+                        <MatButton Unelevated="true" @onclick="CreateNewQuestion">Add Question</MatButton>
+                        <MatButton @onclick="DeleteExam" Style="margin-left: 10px;">Delete</MatButton>
+
+                        <MatButton @onclick="DeleteLastQuestion" Style="margin-left: 10px;">Pop Question</MatButton>
+                    </div>
+                </MatTab>
+                <MatTab Label="Exam Setting">
+                    <div style="margin: 15px 0;">
+                        <MatTextField @bind-Value="questionLabel" Label="Question label"></MatTextField>
+                        <MatButton @onclick="SetLabel" Unelevated="true" Style="margin-left: 10px;">Set common label</MatButton>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <MatTextField Type="number" TValue="int" @bind-Value="minutes" Label="Minutes"></MatTextField>
+                        <MatButton @onclick="SetTime" Unelevated="true" Style="margin-left: 10px;">Set time limit</MatButton>
+                    </div>
+                    <b>Not show correction when submit</b> <MatSlideToggle @onclick="ChangeExamPrivacy" @bind-Value="Privacy" Style="margin-left: 10px;"></MatSlideToggle><br /><br />
+                    <b>Add question mark when missing</b> <MatSlideToggle @bind-Value="autoadd" Style="margin-left: 12px;"></MatSlideToggle>
+                </MatTab>
+            </MatTabGroup>
+        }
+    }
+    else
+    {
+        <h1>Welcome to Exam Access</h1>
+        <h4>You have to log in as admin to create exam</h4>
+    }
 }
 
-
-@if (TitleSeted)
-{
-    <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12 mat-elevation-z5 index-row-item mdc-theme--surface">
-        <h1>@Title</h1>
-        <h5 style="text-align:center; display:@TimeDisplay;">Time limit: @minutes.ToString() minutes</h5>
-        <h5 style="text-align:center;">Private: @Privacy.ToString()</h5>
-        <ul style="margin: 0 10px;">
-            <Virtualize Items="questions" Context="ques">
-                <li>
-                    <Question label="@questionLabel" number="@ques.number" question="@ques.question" answerA="@ques.answerA" answerB="@ques.answerB" answerC="@ques.answerC" answerD="@ques.answerD">
-                    </Question>
-                </li>
-            </Virtualize>
-        </ul>
-    </div>
-    <div style="margin: 15px 0;">
-        <MatTextField @bind-Value="questionLabel" Label="Question label"></MatTextField>
-        <MatButton @onclick="SetLabel" Unelevated="true" Style="margin-left: 10px;">Set common label</MatButton>
-    </div>
-    <div style="margin-bottom: 15px;">
-        <MatTextField Type="number" TValue="int" @bind-Value="minutes" Label="Minutes"></MatTextField>
-        <MatButton @onclick="SetTime" Unelevated="true" Style="margin-left: 10px;">Set time limit</MatButton>
-    </div>
-    <div>
-        <MatTextField @bind-Value="NewTitle" Label="Question Content" TextArea="true" Style="width:478px; resize:vertical; height: 55px"></MatTextField>
-        <div class="new-answers" style="margin-top: 10px;">
-            <MatRadioGroup @bind-Value="@Answer" TValue="string">
-                <MatRadioButton Value="@("A")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerA" TextArea="true" Label="Answer A" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
-                <MatRadioButton Value="@("B")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerB" TextArea="true" Label="Answer B" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
-                <MatRadioButton Value="@("C")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerC" TextArea="true" Label="Answer C" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
-                <MatRadioButton Value="@("D")" TValue="string"></MatRadioButton><MatTextField @bind-Value="NewAnswerD" TextArea="true" Label="Answer D" Style="width: 438px; resize: vertical; height: 55px"></MatTextField><br />
-            </MatRadioGroup>
-        </div>
-    </div>
-    <div style="margin-bottom:20px; margin-top: 10px;">
-        <MatButton Unelevated="true" @onclick="CreateNewQuestion">Add Question</MatButton>
-        <MatButton @onclick="DeleteExam" Style="margin-left: 10px;">Delete</MatButton>
-        <MatButton @onclick="ChangeExamPrivacy" Style="margin-left: 10px;">Change Privacy</MatButton>
-        <MatButton @onclick="DeleteLastQuestion" Style="margin-left: 10px;">Pop Question</MatButton>
-    </div>
-}
 
 
 @code {
@@ -72,16 +98,17 @@
     public string Title { get; set; } = string.Empty;
 
     [Parameter]
-    public int minutes { get; set; } = 0;
-
-    [Parameter]
     public string questionLabel { get; set; }
 
+    private bool autoadd = true;
+    private bool loading = true;
+    private IMongoCollection<QuestionInfo> myExamDb;
+    private int minutes = 0;
+    private bool verify = false;
     private bool Privacy = false;
     private string prevLabel = "Question";
     private int prevTimeLimit = 0;
     private string TimeDisplay = "none";
-    private SqliteConnection connection;
     private string NewTitle = string.Empty;
     private string NewAnswerA = string.Empty;
     private string NewAnswerB = string.Empty;
@@ -93,45 +120,55 @@
 
     protected override async Task OnInitializedAsync()
     {
-        connection = appData.connection;
-        if (TitleSeted)
-        {
-            await LoadQuestion();
-        }
-        Privacy = await appData.GetExamPrivacyAsync(ExamName);
-        SetTime();
-    }
-
-    private async Task LoadQuestion()
-    {
-        var task = connection.OpenAsync();
-        var myCmd = connection.CreateCommand();
+        bool logged = false;
+        bool admin = false;
         try
         {
-            myCmd.CommandText = $"SELECT * FROM {ExamName}";
-            await task;
-            using var rdr = myCmd.ExecuteReader();
-            while (rdr.Read())
+            var res = await localStorage.GetAsync<bool>("logged");
+            var res2 = await localStorage.GetAsync<bool>("admin");
+            if (res.Success && res2.Success)
             {
-                questions.Add(new QuestionInfo() { number = rdr.GetInt32(0), question = rdr.GetString(1), answerA = rdr.GetString(2), answerB = rdr.GetString(3), answerC = rdr.GetString(4), answerD = rdr.GetString(5), answer = rdr.GetString(6) });
-                CurrentQuestionNumber++;
+                logged = res.Value;
+                admin = res2.Value;
+                verify = (logged && admin);
+                loading = false;
+                StateHasChanged();
             }
         }
-        catch (Exception) { };
-        connection.Close();
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+        if (verify)
+        {
+            if (TitleSeted)
+            {
+                var task = appData.GetExamPrivacyAndTimeAsync(ExamName);
+                myExamDb = appData.examdb.GetCollection<QuestionInfo>(ExamName);
+                var task1 = Task.Factory.StartNew(() => LoadQuestion());
+                var info = await task;
+                minutes = info.Item1;
+                Privacy = info.Item2;
+                SetTime();
+                await task1;
+            }
+        }
     }
 
-    private async void CreateNewDb()
+    private void LoadQuestion()
     {
-        var task = connection.OpenAsync();
-        var tablecmd = connection.CreateCommand();
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = $"INSERT INTO exam_collection(code, name, time, label, privacy) VALUES('{ExamName}', '{Title}', 0, 'Question', 0);";
-        tablecmd.CommandText = $"CREATE TABLE {ExamName}(id INTEGER PRIMARY KEY, title TEXT, answer_a TEXT, answer_b TEXT, answer_c TEXT, answer_d TEXT, answer TEXT);";
+        var questionsCollection = myExamDb.Find(s => true);
+        questions = questionsCollection.ToList();
+        CurrentQuestionNumber = questions.Count + 1;
+    }
+
+    private async void CreateNewExam()
+    {
+        Exam exam = new() { code = ExamName, name = Title };
+        var task = appData.exams.InsertOneAsync(exam);
+        appData.examdb.CreateCollection(ExamName);
+        myExamDb = appData.examdb.GetCollection<QuestionInfo>(ExamName);
         await task;
-        cmd.ExecuteNonQuery();
-        tablecmd.ExecuteNonQuery();
-        connection.Close();
     }
 
     private async void SetTitle()
@@ -143,42 +180,35 @@
         }
         else
         {
+            if (Title.Contains('?') || Title.Contains('/') || Title.Contains('\\') || Title.Contains('@') || Title.Contains('$'))
+            {
+                await JsRuntime.InvokeAsync<object>("alert", "The title must not contain special characters");
+                return;
+            }
             Title.Trim();
             Title = Title.First().ToString().ToUpper() + Title.Substring(1);
             TitleSeted = true;
-            CreateNewDb();
+            CreateNewExam();
             StateHasChanged();
         }
     }
 
     private async void PopFromDb()
     {
-        var task = connection.OpenAsync();
-        var deleteCmd = connection.CreateCommand();
-        deleteCmd.CommandText = $"DELETE FROM {ExamName} WHERE id = {CurrentQuestionNumber}";
-        await task;
-        deleteCmd.ExecuteNonQuery();
-        connection.Close();
+        var filter = Builders<QuestionInfo>.Filter.Eq("_id", CurrentQuestionNumber);
+        await myExamDb.DeleteOneAsync(filter);
     }
 
     private async Task InsertQuestionAsync(QuestionInfo info)
     {
-        var task = connection.OpenAsync();
-        var insertCmd = connection.CreateCommand();
-        insertCmd.CommandText = $"INSERT INTO {ExamName}(id, title, answer_a, answer_b, answer_c, answer_d, answer) VALUES({info.number},'{info.question}', '{info.answerA}', '{info.answerB}', '{info.answerC}', '{info.answerD}', '{info.answer}')";
-        await task;
-        insertCmd.ExecuteNonQuery();
-        connection.Close();
+        await myExamDb.InsertOneAsync(info);
     }
 
     private async void DeleteExam()
     {
-        var task = connection.OpenAsync();
-        var tablecmd = connection.CreateCommand();
-        tablecmd.CommandText = $"DROP TABLE {ExamName}";
-        await task;
-        tablecmd.ExecuteNonQuery();
+        var task = appData.examdb.DropCollectionAsync(ExamName);
         await JsRuntime.InvokeAsync<object>("alert", "Successfully deleted the exam.");
+        await task;
         navigationManager.NavigateTo($"/removed/{ExamName}");
     }
 
@@ -196,13 +226,11 @@
             StateHasChanged();
             if (questionLabel != prevLabel)
             {
-                var task = connection.OpenAsync();
-                var cmd = connection.CreateCommand();
-                cmd.CommandText = $"UPDATE exam_collection SET label = '{questionLabel}' WHERE code = '{ExamName}';";
-                await task;
-                cmd.ExecuteNonQuery();
-                connection.Close();
+                var filter = Builders<Exam>.Filter.Eq("_id", ExamName);
+                var update = Builders<Exam>.Update.Set("label", questionLabel);
+                var task = appData.exams.UpdateOneAsync(filter, update);
                 prevLabel = questionLabel;
+                await task;
                 return;
             }
         }
@@ -219,23 +247,12 @@
 
     }
 
-    private async void ChangeExamPrivacy()
+    private void ChangeExamPrivacy()
     {
-        var task = connection.OpenAsync();
-        var cmd = connection.CreateCommand();
-        if (!Privacy)
-        {
-            cmd.CommandText = $"UPDATE exam_collection SET privacy = 1 WHERE code = '{ExamName}';";
-        }
-        else
-        {
-            cmd.CommandText = $"UPDATE exam_collection SET privacy = 0 WHERE code = '{ExamName}';";
-        }
+        var filter = Builders<Exam>.Filter.Eq("_id", ExamName);
         Privacy = !Privacy;
-        await task;
-        cmd.ExecuteNonQuery();
-        connection.Close();
-        prevLabel = questionLabel;
+        var update = Builders<Exam>.Update.Set("privacy", Privacy);
+        appData.exams.UpdateOne(filter, update);
         return;
     }
 
@@ -243,25 +260,21 @@
     {
         if (minutes > 0 && minutes != prevTimeLimit)
         {
-            var task = connection.OpenAsync();
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = $"UPDATE exam_collection SET time = {minutes} WHERE code = '{ExamName}';";
-            await task;
-            cmd.ExecuteNonQuery();
-            connection.Close();
+            var filter = Builders<Exam>.Filter.Eq("_id", ExamName);
+            var update = Builders<Exam>.Update.Set("time", minutes);
+            var task = appData.exams.UpdateOneAsync(filter, update);
             TimeDisplay = "block";
+            await task;
             prevTimeLimit = minutes;
             return;
         }
         else if (minutes == 0 && minutes != prevTimeLimit)
         {
-            var task = connection.OpenAsync();
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = $"UPDATE exam_collection SET time = 0 WHERE code = '{ExamName}';";
-            await task;
-            cmd.ExecuteNonQuery();
-            connection.Close();
+            var filter = Builders<Exam>.Filter.Eq("_id", ExamName);
+            var update = Builders<Exam>.Update.Set("time", 0);
+            var task = appData.exams.UpdateOneAsync(filter, update);
             TimeDisplay = "none";
+            await task;
             prevTimeLimit = 0;
             return;
         }
@@ -305,12 +318,15 @@
                     await JsRuntime.InvokeAsync<object>("alert", "Your given answers must be different from each other.");
                     return;
                 }
-                if (NewTitle.Last() != '?')
+                if (autoadd)
                 {
-                    NewTitle += "?";
+                    if (NewTitle.Last() != '?')
+                    {
+                        NewTitle += "?";
+                    }
                 }
                 NewTitle = NewTitle.First().ToString().ToUpper() + NewTitle.Substring(1);
-                var NewQuestion = new QuestionInfo() { question = NewTitle, number = CurrentQuestionNumber, answerA = NewAnswerA, answerB = NewAnswerB, answerC = NewAnswerC, answerD = NewAnswerD, answer = Answer };
+                var NewQuestion = new QuestionInfo() { question = NewTitle, id = CurrentQuestionNumber, answerA = NewAnswerA, answerB = NewAnswerB, answerC = NewAnswerC, answerD = NewAnswerD, answer = Answer };
                 var task1 = InsertQuestionAsync(NewQuestion);
                 questions.Add(NewQuestion);
                 NewTitle = string.Empty;
